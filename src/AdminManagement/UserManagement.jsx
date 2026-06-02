@@ -1,14 +1,15 @@
 import '../index.css'
 import { useMemo, useState } from 'react'
-import { Search, Eye, Trash2, Circle } from 'lucide-react'
+import { Search, Eye, Trash2 } from 'lucide-react'
 
 const initialUsers = [
-  { id: 1, name: 'Arjuna Perera', email: 'arjuna.p@email.com', role: 'Student', status: 'Active' },
-  { id: 2, name: 'Dilani Silva', email: 'dilani.s@email.com', role: 'Tutor', status: 'Active' },
-  { id: 3, name: 'Deman Silva', email: 'domai.s@email.com', role: 'Student', status: 'Inactive' },
-  { id: 4, name: 'Ariana Sarahr', email: 'salani.s@email.com', role: 'Tutor', status: 'Blocked' },
-  { id: 5, name: 'Samrela Samoih', email: 'namoon@email.com', role: 'Tutor', status: 'Active' },
-  { id: 6, name: 'Andria Makara', email: 'olmti.s@email.com', role: 'Tutor', status: 'Active' }
+  { id: 1, name: 'Arjuna Perera', email: 'arjuna.p@email.com', role: 'Student', status: 'Active', avatar: '👨' },
+  { id: 2, name: 'Dilani Silva', email: 'dilani.s@email.com', role: 'Tutor', status: 'Active', avatar: '👩' },
+  { id: 3, name: 'Deman Silva', email: 'domai.s@email.com', role: 'Student', status: 'Inactive', avatar: '👨' },
+  { id: 4, name: 'Ariana Sarahr', email: 'salani.s@email.com', role: 'Tutor', status: 'Blocked', avatar: '👩' },
+  { id: 5, name: 'Arjuna Perera', email: 'arjuna.p@email.com', role: 'Student', status: 'Blocked', avatar: '👨' },
+  { id: 6, name: 'Samela Samoih', email: 'namoon@email.com', role: 'Tutor', status: 'Active', avatar: '👩' },
+  { id: 7, name: 'Andria Makara', email: 'olmti.s@email.com', role: 'Tutor', status: 'Active', avatar: '👩' }
 ]
 
 const roleOptions = ['All Roles', 'Student', 'Tutor']
@@ -34,6 +35,13 @@ export default function UserManagement() {
 
   return (
     <section className="user-management-page">
+      <div className="user-management-header">
+        <div>
+          <h1>User Management</h1>
+          <p>Admin Portal</p>
+        </div>
+      </div>
+
       <div className="user-management-controls">
         <div className="user-management-search">
           <Search size={18} className="control-icon" />
@@ -58,23 +66,15 @@ export default function UserManagement() {
       </div>
 
       <div className="user-table-card neon-blink">
-        <div className="table-header-row">
-          <div>
-            <p className="table-title">Users</p>
-            <p className="table-subtitle">All students and tutors are listed here.</p>
-          </div>
-          <button className="submit-button outline">Add User</button>
-        </div>
-
         <div className="table-wrapper">
           <table className="user-table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th className="actions-column">Actions</th>
+                <th>NAME</th>
+                <th>EMAIL</th>
+                <th>ROLE</th>
+                <th>STATUS</th>
+                <th className="actions-column">ACTIONS</th>
               </tr>
             </thead>
             <tbody>
@@ -82,12 +82,16 @@ export default function UserManagement() {
                 <tr key={user.id}>
                   <td className="name-cell">
                     <div className="user-avatar">
-                      <Circle size={16} />
+                      {user.avatar}
                     </div>
                     <span>{user.name}</span>
                   </td>
                   <td>{user.email}</td>
-                  <td>{user.role}</td>
+                  <td>
+                    <span className={`role-badge ${user.role.toLowerCase()}`}>
+                      {user.role}
+                    </span>
+                  </td>
                   <td>
                     <span className={`status-pill ${user.status.toLowerCase()}`}>
                       {user.status}

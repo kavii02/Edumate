@@ -88,36 +88,83 @@ export default function AdminDashboard({ onLogout }) {
         ) : activeTab === 'Dashboard' ? (
           <>
             <section className="dashboard-grid">
-              <div className="dashboard-card neon-card">
-                <h2>Users</h2>
-                <p className="card-value">1,250</p>
-                <p className="card-meta">Active students & tutors</p>
+              <div className="dashboard-card neon-card-purple">
+                <div className="card-icon">
+                  <Users size={24} />
+                </div>
+                <h2>TOTAL USERS</h2>
+                <p className="card-value">14,500</p>
               </div>
-              <div className="dashboard-card neon-card">
-                <h2>Classes</h2>
-                <p className="card-value">98</p>
-                <p className="card-meta">Ongoing sessions</p>
+              <div className="dashboard-card neon-card-purple">
+                <div className="card-icon">
+                  <BookOpen size={24} />
+                </div>
+                <h2>TOTAL COURSES</h2>
+                <p className="card-value">325</p>
               </div>
-              <div className="dashboard-card neon-card">
-                <h2>Reports</h2>
-                <p className="card-value">24</p>
-                <p className="card-meta">Pending reviews</p>
+              <div className="dashboard-card neon-card-purple">
+                <div className="card-icon">
+                  <Activity size={24} />
+                </div>
+                <h2>PENDING SKILL REQUESTS</h2>
+                <p className="card-value">72</p>
+              </div>
+              <div className="dashboard-card neon-card-purple">
+                <div className="card-icon">
+                  <UserCheck size={24} />
+                </div>
+                <h2>ACTIVE TUTORS</h2>
+                <p className="card-value">150</p>
               </div>
             </section>
 
-            <section className="dashboard-panel">
-              <div className="dashboard-panel-card neon-card">
-                <h2>System status</h2>
-                <ul>
-                  <li>Server uptime: <strong>99.98%</strong></li>
-                  <li>New signups: <strong>42 today</strong></li>
-                  <li>Support tickets: <strong>3 unresolved</strong></li>
-                </ul>
-              </div>
-              <div className="dashboard-panel-card neon-card">
-                <h2>Quick actions</h2>
-                <button className="submit-button">Create announcement</button>
-                <button className="submit-button outline">Review reports</button>
+            <section className="system-alerts-section">
+              <div className="alerts-card neon-card-purple">
+                <h2>System Alerts (Logs)</h2>
+                <div className="table-wrapper">
+                  <table className="alerts-table">
+                    <thead>
+                      <tr>
+                        <th>Timestamp</th>
+                        <th>Level</th>
+                        <th>User</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>12:05 PM</td>
+                        <td><span className="alert-level critical">CRITICAL</span></td>
+                        <td>Tutor_A</td>
+                        <td>DB connection failed</td>
+                      </tr>
+                      <tr>
+                        <td>11:58 AM</td>
+                        <td><span className="alert-level info">INFO</span></td>
+                        <td>Admin_B</td>
+                        <td>User created</td>
+                      </tr>
+                      <tr>
+                        <td>12:05 AM</td>
+                        <td><span className="alert-level critical">CRITICAL</span></td>
+                        <td>Admin_A</td>
+                        <td>DB connection failed</td>
+                      </tr>
+                      <tr>
+                        <td>11:58 AM</td>
+                        <td><span className="alert-level info">INFO</span></td>
+                        <td>Admin_B</td>
+                        <td>User created</td>
+                      </tr>
+                      <tr>
+                        <td>11:50 AM</td>
+                        <td><span className="alert-level critical">CRITICAL</span></td>
+                        <td>Main_A</td>
+                        <td>DB connection failed</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </section>
           </>
