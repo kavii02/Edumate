@@ -1,1 +1,1 @@
-# Edumate
+# Edumate Frontend
