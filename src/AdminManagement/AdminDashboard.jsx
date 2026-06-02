@@ -28,8 +28,33 @@ const navItems = [
   { name: 'Account Settings', icon: <Settings size={18} /> }
 ]
 
+const courseApprovals = [
+  {
+    id: 1,
+    course: 'Advanced Python for Data Science',
+    tutor: 'Dr. Arjuna Perera',
+    submitted: 'Oct 26, 2023, 11:30 AM',
+    status: 'Pending Approval'
+  },
+  {
+    id: 2,
+    course: 'SQL Database Design Fundamental',
+    tutor: 'Ms. Dilani Silva',
+    submitted: 'Oct 25, 2023, 09:15 AM',
+    status: 'Pending Approval'
+  },
+  {
+    id: 3,
+    course: 'Full Stack Web Development (MERN)',
+    tutor: 'Mr. Deman Silva',
+    submitted: 'Oct 24, 2023, 04:45 PM',
+    status: 'Pending Approval'
+  }
+]
+
 export default function AdminDashboard({ onLogout }) {
   const [activeTab, setActiveTab] = useState('Dashboard')
+  const pageTitle = activeTab === 'User Management' ? '' : activeTab
 
   return (
     <div className="admin-dashboard-shell">
@@ -63,7 +88,7 @@ export default function AdminDashboard({ onLogout }) {
         <header className="admin-main-header">
           <div>
             <p className="page-subtitle">Admin Portal</p>
-            <h1 className="page-title">{activeTab}</h1>
+            {pageTitle && <h1 className="page-title">{pageTitle}</h1>}
           </div>
           <div className="header-actions">
             <button className="icon-pill">
@@ -85,6 +110,55 @@ export default function AdminDashboard({ onLogout }) {
 
         {activeTab === 'User Management' ? (
           <UserManagement />
+        ) : activeTab === 'Course Approval' ? (
+          <section className="course-approval-section">
+            <div className="course-approval-header">
+              <div>
+                <p className="course-approval-subtitle">Courses Pending Review</p>
+              </div>
+            </div>
+
+            <div className="course-approval-card neon-card-purple">
+              <div className="table-wrapper">
+                <table className="course-approval-table">
+                  <thead>
+                    <tr>
+                      <th>COURSE NAME</th>
+                      <th>TUTOR</th>
+                      <th>DATE SUBMITTED</th>
+                      <th>STATUS</th>
+                      <th>ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {courseApprovals.map((item) => (
+                      <tr key={item.id}>
+                        <td>{item.course}</td>
+                        <td>{item.tutor}</td>
+                        <td>{item.submitted}</td>
+                        <td>
+                          <span className="course-status-pill">{item.status}</span>
+                        </td>
+                        <td className="course-actions-cell">
+                          <button type="button" className="course-view-button">
+                            View Details
+                          </button>
+                          <button type="button" className="course-action-button">
+                            Approve / Reject
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="course-approval-footer">
+                <div className="course-pagination">« 1 2 3 »</div>
+                <div className="course-pending-count">Total Pending: 7</div>
+              </div>
+            </div>
+          </section>
         ) : activeTab === 'Dashboard' ? (
           <>
             <section className="dashboard-grid">
