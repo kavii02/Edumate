@@ -165,7 +165,7 @@ export default function UserManagement() {
     <section className="user-management-page">
       <div className="user-management-header">
         <div>
-          <h1>Users</h1>
+          <h1 className="page-title">Users</h1>
         </div>
       </div>
 

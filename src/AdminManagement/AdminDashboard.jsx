@@ -1,5 +1,5 @@
 import '../index.css'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   LayoutGrid,
   Users,
@@ -16,49 +16,33 @@ import {
   Activity,
   ChevronRight
 } from 'lucide-react'
+
 import UserManagement from './UserManagement'
+import CourseApproval from './CourseApproval'
+import SystemMonitoring from './SystemMonitoring'
+import UserReports from './UserReports'
+import SystemLogs from './SystemLogs'
 
 const navItems = [
   { name: 'Dashboard', icon: <LayoutGrid size={18} /> },
   { name: 'User Management', icon: <Users size={18} /> },
   { name: 'Course Approval', icon: <BookOpen size={18} /> },
-  { name: 'Skill Barter', icon: <Edit3 size={18} /> },
+  { name: 'User Reports', icon: <Mail size={18} /> },
+  { name: 'System Monitoring', icon: <Activity size={18} /> },
   { name: 'System Logs', icon: <FileText size={18} /> },
-  { name: 'Reports', icon: <TrendingUp size={18} /> },
   { name: 'Account Settings', icon: <Settings size={18} /> }
-]
-
-const courseApprovals = [
-  {
-    id: 1,
-    course: 'Advanced Python for Data Science',
-    tutor: 'Dr. Arjuna Perera',
-    submitted: 'Oct 26, 2023, 11:30 AM',
-    status: 'Pending Approval'
-  },
-  {
-    id: 2,
-    course: 'SQL Database Design Fundamental',
-    tutor: 'Ms. Dilani Silva',
-    submitted: 'Oct 25, 2023, 09:15 AM',
-    status: 'Pending Approval'
-  },
-  {
-    id: 3,
-    course: 'Full Stack Web Development (MERN)',
-    tutor: 'Mr. Deman Silva',
-    submitted: 'Oct 24, 2023, 04:45 PM',
-    status: 'Pending Approval'
-  }
 ]
 
 export default function AdminDashboard({ onLogout }) {
   const [activeTab, setActiveTab] = useState('Dashboard')
+  const [selectedCourse, setSelectedCourse] = useState(null)
+
   const pageTitle = activeTab === 'User Management' ? '' : activeTab
 
   return (
     <div className="admin-dashboard-shell">
       <div className="admin-dashboard-backdrop" />
+
       <aside className="admin-sidebar">
         <div className="sidebar-brand">
           <div className="sidebar-logo">E</div>
@@ -68,6 +52,7 @@ export default function AdminDashboard({ onLogout }) {
           </div>
         </div>
 
+        {/* SIDEBAR NAV */}
         <nav className="sidebar-nav">
           {navItems.map((item) => (
             <button
@@ -78,10 +63,27 @@ export default function AdminDashboard({ onLogout }) {
             >
               <span className="nav-icon">{item.icon}</span>
               <span>{item.name}</span>
-              {activeTab === item.name && <ChevronRight size={16} className="nav-arrow" />}
+              {activeTab === item.name && (
+                <ChevronRight size={16} className="nav-arrow" />
+              )}
             </button>
           ))}
         </nav>
+
+        {/* SIDEBAR LOGOUT BUTTON */}
+        {/* <button
+          className="sidebar-nav-item"
+          style={{
+            marginTop: 'auto',
+            background: 'rgba(248, 113, 113, 0.12)',
+            borderColor: 'rgba(248, 113, 113, 0.3)',
+            color: '#fda4af'
+          }}
+          onClick={onLogout}
+        >
+          <span className="nav-icon">⎋</span>
+          Logout
+        </button> */}
       </aside>
 
       <main className="admin-main-panel">
@@ -90,6 +92,7 @@ export default function AdminDashboard({ onLogout }) {
             <p className="page-subtitle">Admin Portal</p>
             {pageTitle && <h1 className="page-title">{pageTitle}</h1>}
           </div>
+
           <div className="header-actions">
             <button className="icon-pill">
               <Bell size={16} />
@@ -108,57 +111,17 @@ export default function AdminDashboard({ onLogout }) {
           </div>
         </header>
 
+        {/* PAGE ROUTING */}
         {activeTab === 'User Management' ? (
           <UserManagement />
         ) : activeTab === 'Course Approval' ? (
-          <section className="course-approval-section">
-            <div className="course-approval-header">
-              <div>
-                <p className="course-approval-subtitle">Courses Pending Review</p>
-              </div>
-            </div>
-
-            <div className="course-approval-card neon-card-purple">
-              <div className="table-wrapper">
-                <table className="course-approval-table">
-                  <thead>
-                    <tr>
-                      <th>COURSE NAME</th>
-                      <th>TUTOR</th>
-                      <th>DATE SUBMITTED</th>
-                      <th>STATUS</th>
-                      <th>ACTIONS</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {courseApprovals.map((item) => (
-                      <tr key={item.id}>
-                        <td>{item.course}</td>
-                        <td>{item.tutor}</td>
-                        <td>{item.submitted}</td>
-                        <td>
-                          <span className="course-status-pill">{item.status}</span>
-                        </td>
-                        <td className="course-actions-cell">
-                          <button type="button" className="course-view-button">
-                            View Details
-                          </button>
-                          <button type="button" className="course-action-button">
-                            Approve / Reject
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="course-approval-footer">
-                <div className="course-pagination">« 1 2 3 »</div>
-                <div className="course-pending-count">Total Pending: 7</div>
-              </div>
-            </div>
-          </section>
+          <CourseApproval />
+        ) : activeTab === 'User Reports' ? (
+          <UserReports />
+        ) : activeTab === 'System Monitoring' ? (
+          <SystemMonitoring />
+        ) : activeTab === 'System Logs' ? (
+          <SystemLogs />
         ) : activeTab === 'Dashboard' ? (
           <>
             <section className="dashboard-grid">
@@ -169,6 +132,7 @@ export default function AdminDashboard({ onLogout }) {
                 <h2>TOTAL USERS</h2>
                 <p className="card-value">14,500</p>
               </div>
+
               <div className="dashboard-card neon-card-purple">
                 <div className="card-icon">
                   <BookOpen size={24} />
@@ -176,6 +140,7 @@ export default function AdminDashboard({ onLogout }) {
                 <h2>TOTAL COURSES</h2>
                 <p className="card-value">325</p>
               </div>
+
               <div className="dashboard-card neon-card-purple">
                 <div className="card-icon">
                   <Activity size={24} />
@@ -183,6 +148,7 @@ export default function AdminDashboard({ onLogout }) {
                 <h2>PENDING SKILL REQUESTS</h2>
                 <p className="card-value">72</p>
               </div>
+
               <div className="dashboard-card neon-card-purple">
                 <div className="card-icon">
                   <UserCheck size={24} />
