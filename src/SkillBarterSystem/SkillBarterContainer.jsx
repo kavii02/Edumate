@@ -1,5 +1,12 @@
 import React, { useState } from 'react'
-import { BookOpen, User, GitPullRequest, Users2 } from 'lucide-react'
+import {
+  BookOpen,
+  User,
+  GitPullRequest,
+  Users2,
+  Sparkles
+} from 'lucide-react'
+
 import BrowseSkills from './BrowseSkills'
 import MySkills from './MySkills'
 import SkillRequests from './SkillRequests'
@@ -10,42 +17,100 @@ export default function SkillBarterContainer() {
   const [activeSubTab, setActiveSubTab] = useState('Browse Skills')
 
   const subNavItems = [
-    { name: 'Browse Skills', icon: <BookOpen size={18} /> },
-    { name: 'My Skills', icon: <User size={18} /> },
-    { name: 'Skill Requests', icon: <GitPullRequest size={18} /> },
-    { name: 'Peer Matching', icon: <Users2 size={18} /> }
+    {
+      name: 'Browse Skills',
+      icon: <BookOpen size={18} />
+    },
+    {
+      name: 'My Skills',
+      icon: <User size={18} />
+    },
+    {
+      name: 'Skill Requests',
+      icon: <GitPullRequest size={18} />
+    },
+    {
+      name: 'Peer Matching',
+      icon: <Users2 size={18} />
+    }
   ]
+
+  const renderContent = () => {
+    switch (activeSubTab) {
+      case 'Browse Skills':
+        return <BrowseSkills />
+
+      case 'My Skills':
+        return <MySkills />
+
+      case 'Skill Requests':
+        return <SkillRequests />
+
+      case 'Peer Matching':
+        return <PeerMatching />
+
+      default:
+        return <BrowseSkills />
+    }
+  }
 
   return (
     <div className="barter-layout">
-      {/* Internal Sub-Navigation Sidebar */}
+
+      {/* Sidebar */}
       <aside className="barter-sidebar">
         <div className="barter-sidebar-header">
-          <h3>Skill Barter</h3>
-          <p>Exchange ICT Knowledge</p>
+          <div className="sidebar-brand">
+            <div className="logo-circle" aria-hidden>
+              <Sparkles size={20} />
+            </div>
+            <div className="brand-text">
+              <h3>Skill Barter</h3>
+              <p>Skill Exchange</p>
+            </div>
+          </div>
         </div>
-        <nav className="barter-nav">
+
+        <nav className="barter-nav" role="navigation" aria-label="Skill barter navigation">
           {subNavItems.map((item) => (
             <button
               key={item.name}
               type="button"
+              title={item.name}
+              aria-current={activeSubTab === item.name ? 'true' : undefined}
               className={`barter-nav-btn ${activeSubTab === item.name ? 'active' : ''}`}
               onClick={() => setActiveSubTab(item.name)}
             >
-              {item.icon}
-              <span>{item.name}</span>
+              <span className="nav-icon" aria-hidden>{item.icon}</span>
+              <span className="nav-label">{item.name}</span>
             </button>
           ))}
         </nav>
+
+        <div className="sidebar-footer" aria-hidden>
+          <p>EduMate LMS</p>
+          <small>Skill Exchange Module</small>
+        </div>
       </aside>
 
-      {/* Main Barter Content Viewport Area */}
+      {/* Main Content */}
       <main className="barter-viewport">
-        {activeSubTab === 'Browse Skills' && <BrowseSkills />}
-        {activeSubTab === 'My Skills' && <MySkills />}
-        {activeSubTab === 'Skill Requests' && <SkillRequests />}
-        {activeSubTab === 'Peer Matching' && <PeerMatching />}
+
+        <div className="page-top-banner">
+          <div>
+            <h1>Skill Barter System</h1>
+            {/* <p>Connect with peers and trade ICT skills.</p> */}
+          </div>
+
+          {/* <div className="banner-badge">
+            Peer network
+          </div> */}
+        </div>
+
+        {renderContent()}
+
       </main>
+
     </div>
   )
 }

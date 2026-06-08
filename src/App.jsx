@@ -1,9 +1,10 @@
 import { useState } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import AdminDashboard from './AdminManagement/AdminDashboard'
 import StudentDashboard from './StudentManagement/StudentDashboard'
-import TutorDashboard from './TutorManagement/TutorDashboard'
+import TutorMain from './TutorManagement/TutorMain'
 // Import your new skill barter system entry shell container
-import SkillBarterContainer from './skillBarterSystem/SkillBarterContainer'
+import SkillBarterContainer from './SkillBarterSystem/SkillBarterContainer'
 
 const ROLES = ['Admin', 'Tutor', 'Student']
 
@@ -43,6 +44,7 @@ export default function App() {
     if (role === 'Tutor' && sanitizedEmail === 'tutor' && password === 'tutor') {
       setError('')
       setLoggedIn(true)
+      window.history.replaceState({}, '', '/tutor')
       return
     }
 
@@ -63,6 +65,20 @@ export default function App() {
     setPassword('')
     setShowPassword(false)
     setError('')
+    if (window.location.pathname.startsWith('/tutor')) {
+      window.history.replaceState({}, '', '/')
+    }
+  }
+
+  if (loggedIn && role === 'Tutor') {
+    return (
+      <Router>
+        <Routes>
+          <Route path="/tutor/*" element={<TutorMain />} />
+          <Route path="*" element={<Navigate to="/tutor" replace />} />
+        </Routes>
+      </Router>
+    )
   }
 
   // View Router Wrapper Factory
@@ -121,7 +137,6 @@ export default function App() {
           {/* Layer 2: Secure Application Dashboards */}
           {loggedIn && role === 'Admin' && <AdminDashboard onLogout={handleLogout} />}
           {loggedIn && role === 'Student' && <StudentDashboard onLogout={handleLogout} />}
-          {loggedIn && role === 'Tutor' && <TutorDashboard onLogout={handleLogout} />}
 
           {/* Layer 3: Interactive Login Input Credential Deck Form Frame */}
           {role && !loggedIn && (

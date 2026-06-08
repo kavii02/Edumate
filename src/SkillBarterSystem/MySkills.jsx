@@ -68,8 +68,8 @@ export default function MySkills() {
     <div className="barter-view-panel">
       <div className="view-panel-header row-layout">
         <div>
-          <h2>My Skills (Your CRUD Dashboard)</h2>
-          <p>Configure the skill sets you can offer to other students in swap exchange cycles.</p>
+          <h2>My Skills</h2>
+          <p>Manage the skills you offer to your peers.</p>
         </div>
         {!isAdding && !editingId && (
           <button type="button" className="barter-action-btn accent" onClick={handleOpenAdd}>

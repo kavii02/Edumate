@@ -8,14 +8,22 @@ const MOCK_AVAILABLE_SKILLS = [
   { id: 4, student: 'Thilina Rathnayake', skill: 'IP Addressing & Subnetting', category: 'Networking', level: 'Intermediate', desc: 'Breaking down IPv4 addressing networks into efficient logical segments.' }
 ]
 
+const AVAILABLE_CATEGORIES = ['All', ...Array.from(new Set(MOCK_AVAILABLE_SKILLS.map((item) => item.category)))]
+
 export default function BrowseSkills() {
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('All')
 
-  const filteredSkills = MOCK_AVAILABLE_SKILLS.filter(item => {
-    const matchesSearch = item.skill.toLowerCase().includes(search.toLowerCase()) || 
-                          item.desc.toLowerCase().includes(search.toLowerCase())
+  const filteredSkills = MOCK_AVAILABLE_SKILLS.filter((item) => {
+    const searchTerm = search.trim().toLowerCase()
+    const matchesSearch =
+      !searchTerm ||
+      [item.skill, item.desc, item.student, item.category].some((field) =>
+        field.toLowerCase().includes(searchTerm)
+      )
+
     const matchesCat = categoryFilter === 'All' || item.category === categoryFilter
+
     return matchesSearch && matchesCat
   })
 
@@ -47,38 +55,44 @@ export default function BrowseSkills() {
         <div className="filter-wrapper">
           <Filter size={16} className="filter-box-icon" />
           <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-            <option value="All">All Categories</option>
-            <option value="Programming">Programming</option>
-            <option value="Database Engineering">Database Engineering</option>
-            <option value="Web Development">Web Development</option>
-            <option value="Networking">Networking</option>
+            {AVAILABLE_CATEGORIES.map((category) => (
+              <option key={category} value={category}>
+                {category === 'All' ? 'All Categories' : category}
+              </option>
+            ))}
           </select>
         </div>
       </div>
 
       {/* Grid displaying the available skills */}
-      <div className="barter-grid">
-        {filteredSkills.map((item) => (
-          <div key={item.id} className="barter-card glass-card">
-            <div className="card-badge-row">
-              <span className="category-pill">{item.category}</span>
-              <span className={`level-badge ${item.level.toLowerCase()}`}>{item.level}</span>
+      {filteredSkills.length === 0 ? (
+        <div className="empty-state">
+          No matching skills found. Try a broader keyword or select a different category.
+        </div>
+      ) : (
+        <div className="barter-grid">
+          {filteredSkills.map((item) => (
+            <div key={item.id} className="barter-card glass-card">
+              <div className="card-badge-row">
+                <span className="category-pill">{item.category}</span>
+                <span className={`level-badge ${item.level.toLowerCase()}`}>{item.level}</span>
+              </div>
+              <h3>{item.skill}</h3>
+              <p className="card-owner">Offered by: <span>{item.student}</span></p>
+              <p className="card-description">{item.desc}</p>
+              
+              <button 
+                type="button" 
+                className="barter-action-btn primary"
+                onClick={() => handleRequestSkill(item.id)}
+              >
+                <MessageSquareCode size={16} />
+                <span>Request Skill</span>
+              </button>
             </div>
-            <h3>{item.skill}</h3>
-            <p className="card-owner">Offered by: <span>{item.student}</span></p>
-            <p className="card-description">{item.desc}</p>
-            
-            <button 
-              type="button" 
-              className="barter-action-btn primary"
-              onClick={() => handleRequestSkill(item.id)}
-            >
-              <MessageSquareCode size={16} />
-              <span>Request Skill</span>
-            </button>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
