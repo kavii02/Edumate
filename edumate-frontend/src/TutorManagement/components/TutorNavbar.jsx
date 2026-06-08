@@ -8,6 +8,7 @@ const pageTitles = {
   "/tutor/create-course": "Create Course",
   "/tutor/create-quiz": "Create Quiz",
   "/tutor/profile": "Tutor Profile",
+  "/tutor/student-monitoring": "Student Monitoring",
   "/tutor/change-password": "Change Password",
   "/tutor/notifications": "Notifications",
   "/tutor/availability": "Availability",

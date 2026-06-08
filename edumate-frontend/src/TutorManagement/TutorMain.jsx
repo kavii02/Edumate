@@ -6,6 +6,7 @@ import Courses from "./pages/Courses";
 import CreateCourse from "./pages/CreateCourse";
 import TutorProfile from "./pages/TutorProfile";
 import CreateQuiz from "./pages/CreateQuiz";
+import StudentMonitoring from "./pages/StudentMonitoring";
 import ChangePassword from "./pages/ChangePassword";
 import NotificationSettings from "./pages/NotificationSettings";
 import Availability from "./pages/Availability";
@@ -39,6 +40,7 @@ const TutorMain = () => {
             <Route path="availability" element={<Availability />} />
             <Route path="help" element={<HelpSupport />} />
             <Route path="create-quiz" element={<CreateQuiz />} />
+            <Route path="student-monitoring" element={<StudentMonitoring />} />
             <Route path="analytics" element={<Placeholder title="Analytics" />} />
             <Route path="attendance" element={<Placeholder title="Attendance" />} />
             <Route path="*" element={<Navigate to="." replace />} />

@@ -6,11 +6,13 @@ import {
   FileQuestion,
   BarChart3,
   CalendarCheck,
+  TrendingUp,
 } from "lucide-react";
 
 const menuItems = [
   { name: "Dashboard", path: "/tutor", icon: LayoutDashboard },
   { name: "Courses", path: "/tutor/courses", icon: BookOpen },
+  { name: "Student Monitoring", path: "/tutor/student-monitoring", icon: TrendingUp },
   { name: "Create Courses", path: "/tutor/create-course", icon: PlusSquare },
   { name: "Create Quizzes", path: "/tutor/create-quiz", icon: FileQuestion },
   { name: "Analytics", path: "/tutor/analytics", icon: BarChart3 },
