@@ -1,28 +1,39 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Bell, User, Settings, Lock, LogOut } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { Bell, User, Settings, Lock, LogOut, CheckCircle, HelpCircle } from "lucide-react";
+
+const pageTitles = {
+  "/tutor": "Tutor Dashboard",
+  "/tutor/courses": "Courses",
+  "/tutor/create-course": "Create Course",
+  "/tutor/create-quiz": "Create Quiz",
+  "/tutor/profile": "Tutor Profile",
+  "/tutor/change-password": "Change Password",
+  "/tutor/notifications": "Notifications",
+  "/tutor/availability": "Availability",
+  "/tutor/help": "Help & Support",
+};
 
 const TutorNavbar = () => {
   const [openProfile, setOpenProfile] = useState(false);
+  const location = useLocation();
+  const currentPath = location.pathname.replace(/\/$/, "");
+  const pageTitle = pageTitles[currentPath] || "Tutor Dashboard";
 
   return (
     <header className="h-20 px-8 flex items-center justify-between bg-[#02111f]/90 backdrop-blur-xl border-b border-cyan-400/20 shadow-[0_0_20px_rgba(34,211,238,0.15)]">
       <div className="flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-purple-600/30 border border-cyan-300/40 shadow-[0_0_15px_rgba(34,211,238,0.5)] flex items-center justify-center">
-          <span className="text-2xl font-bold text-purple-200">E</span>
-        </div>
-
-        <div>
-          <h1 className="text-2xl font-bold text-white">EduMate</h1>
-          <p className="text-xs text-cyan-300 tracking-wide">Tutor Dashboard</p>
+        <div className="rounded-3xl bg-slate-950/80 border border-cyan-400/20 px-5 py-3 shadow-[0_0_20px_rgba(34,211,238,0.2)]">
+          <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">Current page</p>
+          <h1 className="mt-1 text-2xl font-semibold text-white leading-tight">{pageTitle}</h1>
         </div>
       </div>
 
       <div className="flex items-center gap-5">
-        <button className="relative flex items-center gap-2 rounded-xl px-5 py-3 bg-blue-600 hover:bg-blue-500 transition shadow-[0_0_20px_rgba(59,130,246,0.4)]">
-          <Bell size={18} />
+        <button className="relative flex items-center gap-2 rounded-2xl px-5 py-3 bg-cyan-500/10 text-cyan-100 ring-1 ring-cyan-400/20 hover:bg-cyan-500/20 transition shadow-[0_0_24px_rgba(34,211,238,0.18)]">
+          <Bell size={18} className="text-cyan-300" />
           <span className="font-medium">Notifications</span>
-          <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-pink-500 text-xs flex items-center justify-center">
+          <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-pink-500 text-[11px] font-semibold text-white flex items-center justify-center shadow-lg shadow-pink-500/25">
             3
           </span>
         </button>
@@ -52,17 +63,31 @@ const TutorNavbar = () => {
                 </Link>
 
                 <Link
-                  to="/tutor/profile/edit"
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-200 hover:bg-cyan-400/10"
-                >
-                  <Settings size={18} /> Edit Profile
-                </Link>
-
-                <Link
                   to="/tutor/change-password"
                   className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-200 hover:bg-cyan-400/10"
                 >
                   <Lock size={18} /> Change Password
+                </Link>
+
+                <Link
+                  to="/tutor/notifications"
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-200 hover:bg-cyan-400/10"
+                >
+                  <Bell size={18} /> Notification Settings
+                </Link>
+
+                <Link
+                  to="/tutor/availability"
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-200 hover:bg-cyan-400/10"
+                >
+                  <CheckCircle size={18} /> Availability Status
+                </Link>
+
+                <Link
+                  to="/tutor/help"
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-200 hover:bg-cyan-400/10"
+                >
+                  <HelpCircle size={18} /> Help & Support
                 </Link>
 
                 <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-300 hover:bg-red-500/10">

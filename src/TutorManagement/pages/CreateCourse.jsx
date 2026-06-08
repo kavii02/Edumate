@@ -78,7 +78,7 @@ const CreateCourse = () => {
         <div className="mb-8">
           <h1 className="text-4xl font-semibold text-cyan-200">Create Course</h1>
           <p className="mt-2 text-slate-400">
-            Upload PDFs, videos, and manage course content with the new neon tutor design.
+            Upload PDFs, videos, and manage course content.
           </p>
         </div>
 
