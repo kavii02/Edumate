@@ -1,5 +1,5 @@
 const API_BASE_URL = "http://localhost:5000/api/tutor";
-const COURSE_API_BASE_URL = "http://localhost:5000/api/tutor/courses";
+const COURSE_API_BASE_URL = "http://localhost:5000/api/courses";
 
 // ==================== PROFILE ====================
 

@@ -170,7 +170,7 @@ def get_dashboard(tutor_id):
         text(
             """
             SELECT COUNT(*)
-            FROM tutor_course_materials m
+            FROM course_materials m
             INNER JOIN courses c ON c.course_id = m.course_id
             WHERE c.tutor_id = :tutor_id
             """

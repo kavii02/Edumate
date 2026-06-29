@@ -121,23 +121,31 @@ class Course(db.Model):
 
 
 class CourseMaterial(db.Model):
-    __tablename__ = "tutor_course_materials"
+    __tablename__ = "course_materials"
 
     material_id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey("courses.course_id"), nullable=True)
-    material_title = db.Column(db.String(100), nullable=True)
+    title = db.Column(db.String(100), nullable=True)
     material_type = db.Column(db.Enum("PDF", "Video", "Note", name="tutor_material_type"), nullable=True)
     file_path = db.Column(db.String(255), nullable=True)
 
     course = db.relationship("Course", back_populates="materials")
+
+    @property
+    def material_title(self):
+        return self.title
+
+    @material_title.setter
+    def material_title(self, value):
+        self.title = value
 
     def to_dict(self):
         material_type = (self.material_type or "PDF").lower()
         return {
             "material_id": self.material_id,
             "course_id": self.course_id,
-            "title": self.material_title,
-            "material_title": self.material_title,
+            "title": self.title,
+            "material_title": self.title,
             "material_type": material_type,
             "file_url": self.file_path,
             "file_path": self.file_path,

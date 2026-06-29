@@ -31,7 +31,7 @@ const CreateCourse = () => {
       setMessage("You must be logged in as a tutor to create a course.");
       return;
     }
-    
+
     setLoading(true);
     const response = await createCourse({
       tutor_id: tutorId,
@@ -40,7 +40,7 @@ const CreateCourse = () => {
       category: "General",
       level: "Beginner",
     });
-    
+
     if (response.success) {
       setCourseId(response.course.course_id);
       setMessage("Course created successfully! Now upload materials.");
@@ -52,21 +52,21 @@ const CreateCourse = () => {
 
   const handleUploadMaterial = async (event) => {
     event.preventDefault();
-    
+
     if (!courseId) {
       setMessage("Please create a course first.");
       return;
     }
-    
+
     if (!materialTitle.trim() || !selectedFile) {
       setMessage("Add a title and choose a file.");
       return;
     }
 
     setLoading(true);
-    
+
     const response = await addMaterial(courseId, selectedFile, materialTitle, materialType, "");
-    
+
     if (response.success) {
       const newMaterial = {
         id: response.material.material_id,
@@ -92,7 +92,7 @@ const CreateCourse = () => {
     } else {
       setMessage("Failed to upload material: " + response.message);
     }
-    
+
     setLoading(false);
   };
 
@@ -151,7 +151,7 @@ const CreateCourse = () => {
                   />
                 </div>
                 {!courseId && (
-                  <button 
+                  <button
                     type="submit"
                     disabled={loading}
                     className="inline-flex items-center rounded-3xl bg-cyan-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:opacity-50"
@@ -207,7 +207,7 @@ const CreateCourse = () => {
                     </div>
                   </div>
 
-                  <button 
+                  <button
                     type="submit"
                     disabled={loading}
                     className="inline-flex items-center rounded-3xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:opacity-50"
@@ -223,13 +223,12 @@ const CreateCourse = () => {
                 )}
               </div>
             )}
-            
+
             {message && (
-              <div className={`p-4 rounded-2xl text-sm ${
-                message.includes("successfully") || message.includes("created")
-                  ? "bg-emerald-500/20 text-emerald-200 border border-emerald-500/50"
-                  : "bg-rose-500/20 text-rose-200 border border-rose-500/50"
-              }`}>
+              <div className={`p-4 rounded-2xl text-sm ${message.includes("successfully") || message.includes("created")
+                ? "bg-emerald-500/20 text-emerald-200 border border-emerald-500/50"
+                : "bg-rose-500/20 text-rose-200 border border-rose-500/50"
+                }`}>
                 {message}
               </div>
             )}
@@ -295,4 +294,3 @@ const CreateCourse = () => {
 };
 
 export default CreateCourse;
-                  

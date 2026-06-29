@@ -20,11 +20,18 @@ def hash_tutor_password(email=TUTOR_EMAIL, plain_password=DEFAULT_PASSWORD):
     with app.app_context():
         tutor = Tutor.query.filter_by(email=email.lower()).first()
         if not tutor:
-            raise ValueError(f"Tutor not found for email: {email}")
+            print(f"Tutor not found. Creating new tutor for email: {email}")
+            tutor = Tutor(
+                first_name="Sandu",
+                last_name="Tutor",
+                email=email.lower(),
+                specialization="Computer Science"
+            )
+            db.session.add(tutor)
 
         tutor.password = generate_password_hash(plain_password)
         db.session.commit()
-        print(f"Tutor password updated for {email}")
+        print(f"Tutor password set successfully for {email}")
 
 
 if __name__ == "__main__":

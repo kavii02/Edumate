@@ -5,7 +5,7 @@ export const getMaterialFileUrl = (filename) =>
 
 // ==================== COURSE MANAGEMENT ====================
 
-export const getAllCourses = async (tutorId = null, page = 1, perPage = 10) => {
+export const getAllCourses = async (tutorId = null, page = 1, perPage = 100) => {
   try {
     const params = new URLSearchParams();
     if (tutorId) params.append("tutor_id", tutorId);

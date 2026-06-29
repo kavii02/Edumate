@@ -1,9 +1,17 @@
+
+# pyrefly: ignore [missing-import]
 from flask import Blueprint, request, jsonify, send_from_directory
+# pyrefly: ignore [missing-import]
 from werkzeug.utils import secure_filename
-from ..models import Course, CourseMaterial, Tutor, normalize_material_type
-from .. import db
+# pyrefly: ignore [missing-import]
+from sqlalchemy.exc import SQLAlchemyError
 import os
 from datetime import datetime
+
+# pyrefly: ignore [missing-import]
+from .. import db
+# pyrefly: ignore [missing-import]
+from ..models import Course, CourseMaterial, Tutor, normalize_material_type
 
 course_bp = Blueprint("course", __name__)
 
@@ -37,7 +45,7 @@ def get_all_courses():
     """Get all courses with optional filtering"""
     tutor_id = request.args.get("tutor_id")
     page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 10, type=int)
+    per_page = request.args.get("per_page", 100, type=int)
     
     query = Course.query
     
