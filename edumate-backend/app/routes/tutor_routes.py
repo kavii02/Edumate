@@ -292,7 +292,7 @@ def get_quiz_details(quiz_id):
     quiz_data = quiz.to_dict()
     quiz_data["questions"] = [
         {**question.to_dict(), "correct_answer": None}  # Don't expose answer to frontend
-        for question in sorted(quiz.questions, key=lambda q: q.order)
+        for question in sorted(quiz.tutor_questions, key=lambda q: q.order)
     ]
     
     return jsonify({
@@ -309,7 +309,7 @@ def publish_quiz(quiz_id):
     if not quiz:
         return jsonify({"success": False, "message": "Quiz not found"}), 404
     
-    if len(quiz.questions) == 0:
+    if len(quiz.tutor_questions) == 0:
         return jsonify({"success": False, "message": "Cannot publish quiz without questions"}), 400
     
     quiz.status = "Active"

@@ -22,7 +22,7 @@ def _serialize_public_quiz(quiz):
                 **question.to_dict(),
                 "correct_answer": None,
             }
-            for question in sorted(quiz.questions, key=lambda item: item.order)
+            for question in sorted(quiz.tutor_questions, key=lambda item: item.order)
         ],
     }
 

@@ -13,7 +13,6 @@ import Availability from "./pages/Availability";
 import HelpSupport from "./pages/HelpSupport";
 import ProfileEdit from "./pages/ProfileEdit";
 import { TutorAuthProvider } from "./context/TutorAuthContext";
-import { getTutorSession } from "../services/authApiService";
 
 const Placeholder = ({ title }) => (
   <div className="rounded-3xl border border-cyan-300/50 bg-[#041225]/80 p-10 shadow-[0_0_25px_rgba(34,211,238,0.45)] text-center">
@@ -23,12 +22,6 @@ const Placeholder = ({ title }) => (
 );
 
 const TutorMain = ({ onLogout }) => {
-  const session = getTutorSession();
-
-  if (!session?.tutor_id) {
-    return <Navigate to="/" replace />;
-  }
-
   return (
     <TutorAuthProvider onLogout={onLogout}>
       <div className="flex h-screen bg-gradient-to-br from-[#0f172a] to-[#020617] text-white">

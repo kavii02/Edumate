@@ -94,11 +94,11 @@ const CreateQuiz = () => {
       questions.map((q) =>
         q.id === questionId
           ? {
-              ...q,
-              options: q.options.map((opt, index) =>
-                index === optionIndex ? value : opt
-              ),
-            }
+            ...q,
+            options: q.options.map((opt, index) =>
+              index === optionIndex ? value : opt
+            ),
+          }
           : q
       )
     );

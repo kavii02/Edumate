@@ -93,11 +93,10 @@ const ChangePassword = () => {
 
         {message && (
           <div
-            className={`p-4 rounded-2xl text-sm ${
-              message.includes("successfully")
+            className={`p-4 rounded-2xl text-sm ${message.includes("successfully")
                 ? "bg-emerald-500/20 text-emerald-200 border border-emerald-500/50"
                 : "bg-rose-500/20 text-rose-200 border border-rose-500/50"
-            }`}
+              }`}
           >
             {message}
           </div>

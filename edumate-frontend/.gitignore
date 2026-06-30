@@ -22,7 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+<<<<<<< HEAD
 node_modules/
 dist/
 .vite/
 .env
+=======
+>>>>>>> d591e0bf4c6878ed434cb11a1a1ea797570dfded

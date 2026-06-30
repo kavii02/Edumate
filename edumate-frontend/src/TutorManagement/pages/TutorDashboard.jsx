@@ -44,25 +44,25 @@ const TutorDashboard = () => {
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1fr]">
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
-            <StatCard 
-              title="Total Courses" 
-              value={loading ? "..." : stats.total_courses} 
-              icon={<TrendingUp />} 
+            <StatCard
+              title="Total Courses"
+              value={loading ? "..." : stats.total_courses}
+              icon={<TrendingUp />}
             />
-            <StatCard 
-              title="Students" 
-              value={loading ? "..." : stats.total_students} 
-              icon={<TrendingUp />} 
+            <StatCard
+              title="Students"
+              value={loading ? "..." : stats.total_students}
+              icon={<TrendingUp />}
             />
-            <StatCard 
-              title="Assignments" 
-              value={loading ? "..." : stats.total_assignments} 
-              icon={<TrendingUp />} 
+            <StatCard
+              title="Assignments"
+              value={loading ? "..." : stats.total_assignments}
+              icon={<TrendingUp />}
             />
-            <StatCard 
-              title="Quizzes" 
-              value={loading ? "..." : stats.total_quizzes} 
-              icon={<TrendingUp />} 
+            <StatCard
+              title="Quizzes"
+              value={loading ? "..." : stats.total_quizzes}
+              icon={<TrendingUp />}
             />
           </div>
 
@@ -109,11 +109,10 @@ const TutorDashboard = () => {
                   {Array.from({ length: 31 }, (_, i) => i + 1).map((num) => (
                     <div
                       key={num}
-                      className={`rounded-lg py-2 ${
-                        [4, 11, 14, 15].includes(num)
+                      className={`rounded-lg py-2 ${[4, 11, 14, 15].includes(num)
                           ? "bg-cyan-400/40 shadow-[0_0_15px_rgba(34,211,238,0.7)]"
                           : "bg-slate-900/50"
-                      }`}
+                        }`}
                     >
                       {num}
                     </div>

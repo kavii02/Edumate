@@ -21,7 +21,7 @@ const menuItems = [
 
 const TutorSidebar = () => {
   const location = useLocation();
-  
+
   const isActive = (path) => {
     if (path === "/tutor" && location.pathname === "/tutor") {
       return true;
@@ -52,11 +52,10 @@ const TutorSidebar = () => {
                 key={item.name}
                 to={item.path}
                 className={`flex items-center gap-3 rounded-xl px-4 py-3 text-white transition
-                ${
-                  active
+                ${active
                     ? "bg-cyan-400/30 shadow-[0_0_18px_rgba(34,211,238,0.7)]"
                     : "hover:bg-cyan-400/20 hover:shadow-[0_0_15px_rgba(34,211,238,0.45)]"
-                }`}
+                  }`}
               >
                 <Icon size={22} className="text-cyan-300" />
                 <span className="text-lg">{item.name}</span>

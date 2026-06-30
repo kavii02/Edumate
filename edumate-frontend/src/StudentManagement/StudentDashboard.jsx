@@ -1,5 +1,6 @@
 import './Student.css'
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import ConfirmationModal from './components/ConfirmationModal'
 import { Routes, Route, Navigate, useNavigate, useLocation, NavLink, useParams } from 'react-router-dom'
 import {
   LayoutGrid,
@@ -49,7 +50,7 @@ function CourseDetailsRoute({ courses, setSelectedClassroomCourse, ...props }) {
   const { id } = useParams()
   const navigate = useNavigate()
   useEffect(() => {
-    if (id && courses.some((c) => c.id === id)) setSelectedClassroomCourse(id)
+    if (id && courses.some((c) => String(c.id) === String(id) || String(c.course_id) === String(id))) setSelectedClassroomCourse(id)
   }, [id, courses, setSelectedClassroomCourse])
   return (
     <ClassroomsPage
@@ -64,16 +65,12 @@ function CourseDetailsRoute({ courses, setSelectedClassroomCourse, ...props }) {
   )
 }
 
-export default function StudentDashboard({ onLogout }) {
+export default function StudentDashboard({ onLogout, student, token }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [communityTab, setCommunityTab] = useState('peers')
-  const [selectedClassroomCourse, setSelectedClassroomCourse] = useState('ICT-101')
-  const [plannerTasks, setPlannerTasks] = useState([
-    { id: 1, text: 'Review Python OOP class constructors structure', date: '2026-05-28', completed: false, isAI: false },
-    { id: 2, text: 'Solve database normalization exercises (Part A)', date: '2026-05-30', completed: true, isAI: false },
-    { id: 3, text: 'Study OSI Layer transport segment protocols', date: '2026-05-29', completed: false, isAI: true, originalReason: 'Triggered from Confused Lesson Feedback' }
-  ])
+  const [selectedClassroomCourse, setSelectedClassroomCourse] = useState('')
+  const [plannerTasks, setPlannerTasks] = useState([])
   const [newTaskText, setNewTaskText] = useState('')
   const [newTaskDate, setNewTaskDate] = useState('')
   const [quizSelectedAnswers, setQuizSelectedAnswers] = useState({})
@@ -81,38 +78,15 @@ export default function StudentDashboard({ onLogout }) {
   const [activeQuizState, setActiveQuizState] = useState('list')
   const [activeQuizObj, setActiveQuizObj] = useState(null)
   const [quizScoreReport, setQuizScoreReport] = useState(null)
-  const [quizHistory, setQuizHistory] = useState([
-    {
-      id: 'h1',
-      quizId: 'q1',
-      quizTitle: 'Structured Programming Logic Fundamentals',
-      courseId: 'ICT-101',
-      date: '2026-05-15',
-      percentage: 72,
-      pointsAwarded: 150,
-      level: 'intermediate',
-      feedback: 'Good grasp of core concepts. Strengthen loop logic and list operations before advancing.',
-      suggestedQuizzes: ['Python Control Structures Drill', 'OOP Fundamentals Challenge']
-    }
-  ])
+  const [quizHistory, setQuizHistory] = useState([])
+  const [quizzes, setQuizzes] = useState([])
+  const [isLoadingQuizzes, setIsLoadingQuizzes] = useState(false)
+  const [quizError, setQuizError] = useState(null)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [mySkillPosts, setMySkillPosts] = useState([])
   const [mySkillRequests, setMySkillRequests] = useState([])
-  const [attendanceRecords] = useState([
-    { id: 1, courseId: 'ICT-101', date: '2026-05-06', session: 'Python Fundamentals', status: 'present' },
-    { id: 2, courseId: 'ICT-101', date: '2026-05-13', session: 'Control Structures', status: 'present' },
-    { id: 3, courseId: 'ICT-101', date: '2026-05-20', session: 'OOP Basics', status: 'present' },
-    { id: 4, courseId: 'ICT-102', date: '2026-05-07', session: 'ER Diagrams Intro', status: 'present' },
-    { id: 5, courseId: 'ICT-102', date: '2026-05-14', session: 'Normalization Workshop', status: 'late' },
-    { id: 6, courseId: 'ICT-102', date: '2026-05-21', session: 'SQL Joins Lab', status: 'absent' },
-    { id: 7, courseId: 'ICT-101', date: '2026-05-27', session: 'Lists & Loops Review', status: 'present' },
-    { id: 8, courseId: 'ICT-102', date: '2026-05-28', session: '2NF & 3NF Deep Dive', status: 'present' }
-  ])
-  const [confusionFeedbacks, setConfusionFeedbacks] = useState({
-    'ICT-101': 'Understood',
-    'ICT-102': 'Partially Understood',
-    'ICT-103': '',
-    'ICT-104': ''
-  })
+  const [attendanceRecords, setAttendanceRecords] = useState([])
+  const [confusionFeedbacks, setConfusionFeedbacks] = useState({})
   const [showToast, setShowToast] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
   const [notifications, setNotifications] = useState([
@@ -121,30 +95,54 @@ export default function StudentDashboard({ onLogout }) {
     { id: 3, text: 'Tutor G.G.H.H. Prabodhana approved your Skill Barter Request.', unread: false }
   ])
   const [studentProfile, setStudentProfile] = useState({
-    name: 'Livini Mallawathanthri',
-    indexNo: 'UWU/CST/22/008',
-    email: 'cst22008@std.uwu.ac.lk',
-    school: 'Uva Wellassa University',
-    avatarSeed: 'Livini',
+    name: student ? `${student.first_name} ${student.last_name}` : 'Student',
+    indexNo: student ? `ID-${student.student_id}` : '—',
+    email: student?.email || '',
+    school: student?.school_name || '',
+    avatarSeed: student?.first_name || 'Student',
     avatarEmoji: '🙂',
     avatarColor: 'bg-purple-600'
   })
-  const [courses, setCourses] = useState([
-    { id: 'ICT-101', title: 'A/L ICT Programming Logic (Python)', description: 'Master logic building, loops, arrays, and foundational OOP schemas optimized for A/L standards.', tutor: 'Mr. U.E. Ranasooriya', enrolled: true, progress: 68 },
-    { id: 'ICT-102', title: 'Relational Database Management Systems', description: 'Comprehensive guide covering SQL queries, ER diagrams, 1NF, 2NF, 3NF normalization keys.', tutor: 'Mr. G.G.H.H. Prabodhana', enrolled: true, progress: 40 },
-    { id: 'ICT-103', title: 'Computer Networks & Security Layers', description: 'Understand OSI models, sub-netting routing arrays, and modern threat vector protocols.', tutor: 'Mr. U.E. Ranasooriya', enrolled: false, progress: 0 },
-    { id: 'ICT-104', title: 'System Analysis & Software Engineering', description: 'Deep-dive into SDLC stages, Agile sprint backlogs, UML classes, and testing matrices.', tutor: 'Mr. G.G.H.H. Prabodhana', enrolled: false, progress: 0 }
-  ])
-  const [points, setPoints] = useState(1250)
+
+  const [courses, setCourses] = useState([])
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false)
+  const [points, setPoints] = useState(0)
   const [badges, setBadges] = useState([
-    { id: 'b1', name: 'Code Pioneer', desc: 'Attempted first python assessment', icon: '🐍', unlocked: true },
-    { id: 'b2', name: 'Database Explorer', desc: 'Achieved 80%+ score on SQL Quiz', icon: '💾', unlocked: true },
-    { id: 'b3', name: 'Network Master', desc: 'Finish network model quiz flawlessly', icon: '🌐', unlocked: false },
-    { id: 'b4', name: 'Logic Master', desc: 'Score 90%+ on control structures quiz', icon: '🔄', unlocked: false },
-    { id: 'b5', name: 'SQL Wizard', desc: 'Achieve 95%+ on normalization assessment', icon: '📊', unlocked: false },
-    { id: 'b6', name: 'Security Guardian', desc: 'Complete network security module', icon: '🔐', unlocked: false },
-    { id: 'b7', name: 'Systems Architect', desc: 'Master SDLC and UML diagrams', icon: '🏗️', unlocked: false }
+    { id: 'b1', name: 'Quiz Pioneer', desc: 'Attempted your first quiz', icon: '🎯', unlocked: false },
+    { id: 'b2', name: 'High Scorer', desc: 'Scored 80%+ on a quiz', icon: '💾', unlocked: false },
+    { id: 'b3', name: 'Perfect Score', desc: 'Scored 100% on a quiz', icon: '🌟', unlocked: false },
+    { id: 'b4', name: 'Consistent Learner', desc: 'Completed 3 or more quizzes', icon: '🔄', unlocked: false },
+    { id: 'b5', name: 'Excellence', desc: 'Average score above 85%', icon: '📊', unlocked: false },
+    { id: 'b6', name: 'Scholar', desc: 'Completed 5 or more quizzes', icon: '🔐', unlocked: false },
+    { id: 'b7', name: 'Master', desc: 'Completed 10 or more quizzes', icon: '🏗️', unlocked: false }
   ])
+
+  useEffect(() => {
+    if (!student) return
+    setStudentProfile((prev) => ({
+      ...prev,
+      name: `${student.first_name} ${student.last_name}`,
+      indexNo: `ID-${student.student_id}`,
+      email: student.email || prev.email,
+      school: student.school_name || prev.school,
+      avatarSeed: student.first_name || 'Student'
+    }))
+  }, [student])
+
+  useEffect(() => {
+    if (quizHistory.length === 0) return
+    const avg = quizHistory.reduce((s, q) => s + (q.percentage || 0), 0) / quizHistory.length
+    setBadges([
+      { id: 'b1', name: 'Quiz Pioneer', desc: 'Attempted your first quiz', icon: '🎯', unlocked: true },
+      { id: 'b2', name: 'High Scorer', desc: 'Scored 80%+ on a quiz', icon: '💾', unlocked: quizHistory.some(q => (q.percentage || 0) >= 80) },
+      { id: 'b3', name: 'Perfect Score', desc: 'Scored 100% on a quiz', icon: '🌟', unlocked: quizHistory.some(q => (q.percentage || 0) >= 100) },
+      { id: 'b4', name: 'Consistent Learner', desc: 'Completed 3 or more quizzes', icon: '🔄', unlocked: quizHistory.length >= 3 },
+      { id: 'b5', name: 'Excellence', desc: 'Average score above 85%', icon: '📊', unlocked: avg >= 85 },
+      { id: 'b6', name: 'Scholar', desc: 'Completed 5 or more quizzes', icon: '🔐', unlocked: quizHistory.length >= 5 },
+      { id: 'b7', name: 'Master', desc: 'Completed 10 or more quizzes', icon: '🏗️', unlocked: quizHistory.length >= 10 }
+    ])
+  }, [quizHistory])
+  const [leaderboardEntries, setLeaderboardEntries] = useState([])
   const [peerTradingOffers, setPeerTradingOffers] = useState([
     { id: 'p1', title: 'Share Python Notes', partner: 'H. K. Silva', reward: '3 skill points', status: 'pending' },
     { id: 'p2', title: 'Swap Database Quiz Tips', partner: 'A. Perera', reward: 'Access to SQL vault', status: 'pending' },
@@ -207,61 +205,11 @@ export default function StudentDashboard({ onLogout }) {
     }
   }
 
-  const isQuizCompleted = (quizId) => quizHistory.some((entry) => entry.quizId === quizId)
+  const isQuizCompleted = (quizId) => quizHistory.some(
+    (entry) => entry.quiz_id === quizId || entry.quizId === quizId || String(entry.quiz_id) === String(quizId)
+  )
 
-  const mockQuizzes = useMemo(() => [
-    {
-      id: 'q1',
-      title: 'Programming Quiz 01 — Logic Fundamentals',
-      courseId: 'ICT-101',
-      category: 'Programming',
-      dueDate: '2026-06-15',
-      duration: '5 Mins',
-      questions: [
-        { q: 'What is the correct output of the expression: print(2 ** 3)?', opts: ['6', '8', '9', 'Error'], ans: 1 },
-        { q: 'Which logical structure is best suited for executing code arrays block recursively?', opts: ['For Loop', 'If-Else Branch', 'While Loop', 'Class Definition'], ans: 2 },
-        { q: 'In Python programming, arrays are structurally managed using which built-in data type?', opts: ['Tuple', 'Set', 'List', 'String'], ans: 2 }
-      ]
-    },
-    {
-      id: 'q2',
-      title: 'Database Quiz 01 — Normalization Keys',
-      courseId: 'ICT-102',
-      category: 'Database',
-      dueDate: '2026-06-20',
-      duration: '10 Mins',
-      questions: [
-        { q: 'Which NF removes partial dependency of non-prime attributes on composite keys?', opts: ['1NF', '2NF', '3NF', 'BCNF'], ans: 1 },
-        { q: 'What database constraint guarantees record entity uniqueness inside a relational grid?', opts: ['Foreign Key', 'Primary Key', 'Index Flag', 'Candidate Identifier'], ans: 1 }
-      ]
-    },
-    {
-      id: 'q3',
-      title: 'Networking Quiz 01 — OSI Model',
-      courseId: 'ICT-103',
-      category: 'Networking',
-      dueDate: '2026-06-25',
-      duration: '8 Mins',
-      questions: [
-        { q: 'Which OSI layer handles routing between networks?', opts: ['Data Link', 'Network', 'Transport', 'Session'], ans: 1 },
-        { q: 'What protocol operates at the Transport layer?', opts: ['IP', 'TCP', 'Ethernet', 'ARP'], ans: 1 }
-      ]
-    },
-    {
-      id: 'q4',
-      title: 'Web Development Quiz 01 — SDLC Basics',
-      courseId: 'ICT-104',
-      category: 'Web Development',
-      dueDate: '2026-07-01',
-      duration: '7 Mins',
-      questions: [
-        { q: 'Which SDLC model is iterative and incremental?', opts: ['Waterfall', 'Agile', 'V-Model', 'Big Bang'], ans: 1 },
-        { q: 'UML diagrams are primarily used for?', opts: ['Hardware design', 'Software modeling', 'Network topology', 'Database indexing'], ans: 1 }
-      ]
-    }
-  ], [])
-
-  const getQuizForCourse = (courseId) => mockQuizzes.find((q) => q.courseId === courseId)
+  const getQuizForCourse = (courseId) => quizzes.find((q) => q.course_id === courseId || q.courseId === courseId)
 
   const studentCourseLevels = useMemo(
     () => getStudentCourseLevels(courses, quizHistory),
@@ -278,9 +226,9 @@ export default function StudentDashboard({ onLogout }) {
   const currentQuizAverage = quizHistory.length > 0
     ? `${Math.round(quizHistory.reduce((s, q) => s + q.percentage, 0) / quizHistory.length)}%`
     : '—'
-  const upcomingQuizzes = mockQuizzes
-    .filter((q) => !isQuizCompleted(q.id))
-    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+  const upcomingQuizzes = quizzes
+    .filter((q) => !isQuizCompleted(q.quiz_id || q.id))
+    .sort((a, b) => (a.due_date || a.dueDate || '').localeCompare(b.due_date || b.dueDate || ''))
     .slice(0, 3)
 
   const attendedCount = attendanceRecords.filter((r) => r.status === 'present' || r.status === 'late').length
@@ -297,25 +245,141 @@ export default function StudentDashboard({ onLogout }) {
     return { level: 'Easy', label: 'Foundational — adapted down to support learning' }
   }
 
-  const leaderboardEntries = useMemo(() => {
-    const base = [
-      { indexNo: 'UWU/CST/22/045', name: 'K. Jayasinghe', points: 1580, emoji: '🚀', badges: 4 },
-      { indexNo: 'UWU/CST/22/008', name: studentProfile.name, points, emoji: studentProfile.avatarEmoji || '🙂', badges: badges.filter((b) => b.unlocked).length },
-      { indexNo: 'UWU/CST/22/062', name: 'R.M.K.G.D.S.N. Rathnayake', points: 1180, emoji: '📈', badges: 3 },
-      { indexNo: 'UWU/CST/22/056', name: 'P.G.D.K.J. Wijesekare', points: 1050, emoji: '💡', badges: 2 },
-      { indexNo: 'UWU/CST/22/033', name: 'M. Nawarathne', points: 980, emoji: '💾', badges: 2 },
-      { indexNo: 'UWU/CST/22/041', name: 'S. Fernando', points: 870, emoji: '🏗️', badges: 1 }
-    ]
-    return base
-      .map((entry) => ({
-        ...entry,
-        rankTitle: entry.points >= 1500 ? 'Code Titan' : entry.points >= 1100 ? 'Code Champion' : entry.points >= 800 ? 'Rising Coder' : 'Code Cadet'
-      }))
-      .sort((a, b) => b.points - a.points)
-      .map((entry, index) => ({ ...entry, rank: index + 1 }))
-  }, [points, studentProfile.name, studentProfile.avatarEmoji, badges])
+  const fetchCourses = useCallback(async () => {
+    if (!student?.student_id) return
+    setIsLoadingCourses(true)
+    try {
+      const [allRes, myRes] = await Promise.all([
+        fetch('http://localhost:5000/api/course/all', { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+        fetch(`http://localhost:5000/api/student/my-courses/${student.student_id}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      ])
+      const allData = await allRes.json()
+      const myData = await myRes.json()
+      if (allData.success) {
+        const enrolledIds = new Set((myData.success ? myData.courses : []).map(c => c.course_id))
+        setCourses((allData.courses || []).map(c => ({
+          id: String(c.course_id),
+          course_id: c.course_id,
+          title: c.title || c.course_title,
+          description: c.description || '',
+          tutor: c.instructor || 'Unknown Tutor',
+          instructor: c.instructor || 'Unknown Tutor',
+          enrolled: enrolledIds.has(c.course_id),
+          progress: 0
+        })))
+      }
+    } catch { /* keep empty */ }
+    finally { setIsLoadingCourses(false) }
+  }, [student?.student_id, token])
 
-  const leaderboardRank = leaderboardEntries.find((e) => e.indexNo === studentProfile.indexNo)?.rank ?? '-'
+  const fetchAttendance = useCallback(async () => {
+    if (!student?.student_id) return
+    try {
+      const res = await fetch(`http://localhost:5000/api/attendance/student/${student.student_id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+      const data = await res.json()
+      if (data.success) {
+        setAttendanceRecords((data.records || []).map(r => ({
+          id: r.attendance_id,
+          courseId: String(r.course_id),
+          date: r.session_date,
+          session: r.session_name || 'Session',
+          status: r.status
+        })))
+      }
+    } catch { /* keep empty */ }
+  }, [student?.student_id, token])
+
+  const fetchPlannerTasks = useCallback(async () => {
+    if (!student?.student_id) return
+    try {
+      const res = await fetch(`http://localhost:5000/api/planner/list/${student.student_id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+      const data = await res.json()
+      if (data.success) {
+        setPlannerTasks((data.tasks || []).map(t => ({
+          id: t.planner_id,
+          text: t.task_name,
+          date: t.scheduled_date,
+          completed: t.is_completed,
+          isAI: t.task_type === 'ai' || t.task_type === 'ai_generated',
+          originalReason: t.description || ''
+        })))
+      }
+    } catch { /* keep empty */ }
+  }, [student?.student_id, token])
+
+  const fetchQuizzes = useCallback(async () => {
+    setIsLoadingQuizzes(true)
+    setQuizError(null)
+    try {
+      const res = await fetch('http://localhost:5000/api/quiz/all', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+      const data = await res.json()
+      if (res.ok) setQuizzes(data.quizzes || [])
+      else setQuizError(data.message || 'Failed to load quizzes')
+    } catch {
+      setQuizError('Unable to connect to server')
+    } finally {
+      setIsLoadingQuizzes(false)
+    }
+  }, [token])
+
+  const fetchQuizHistory = useCallback(async () => {
+    if (!student?.student_id) return
+    try {
+      const res = await fetch(`http://localhost:5000/api/quiz/history/${student.student_id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+      const data = await res.json()
+      if (res.ok) setQuizHistory(data.results || [])
+    } catch {
+      // keep existing history
+    }
+  }, [student?.student_id, token])
+
+  useEffect(() => {
+    if (!student?.student_id) return
+    fetchCourses()
+    fetchAttendance()
+    fetchPlannerTasks()
+    fetchQuizzes()
+    fetchQuizHistory()
+  }, [student?.student_id, fetchCourses, fetchAttendance, fetchPlannerTasks, fetchQuizzes, fetchQuizHistory])
+
+  const handleQuizSubmitted = () => {
+    fetchQuizzes()
+    fetchQuizHistory()
+  }
+
+  useEffect(() => {
+    const myEntry = leaderboardEntries.find(e => e.indexNo === `ID-${student?.student_id}`)
+    if (myEntry?.points !== undefined) setPoints(myEntry.points)
+  }, [leaderboardEntries, student?.student_id])
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/quiz/leaderboard')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.leaderboard?.length > 0) {
+          setLeaderboardEntries(data.leaderboard.map(e => ({
+            indexNo: `ID-${e.student_id}`,
+            name: e.name,
+            points: e.points,
+            emoji: '🎯',
+            badges: 0,
+            rankTitle: e.points >= 1500 ? 'Code Titan' : e.points >= 1100 ? 'Code Champion' : e.points >= 800 ? 'Rising Coder' : 'Code Cadet',
+            rank: e.rank
+          })))
+        }
+      })
+      .catch(() => { })
+  }, [])
+
+  const leaderboardRank = leaderboardEntries.find((e) => e.indexNo === `ID-${student?.student_id}`)?.rank ?? '-'
 
   const triggerToast = (msg) => {
     setToastMsg(msg)
@@ -334,7 +398,7 @@ export default function StudentDashboard({ onLogout }) {
       planner: STUDENT_ROUTES.studyPlanner,
       progress: STUDENT_ROUTES.performance,
       attendance: STUDENT_ROUTES.attendance,
-      classrooms: STUDENT_ROUTES.course(selectedClassroomCourse),
+      classrooms: STUDENT_ROUTES.course(selectedClassroomCourse || courses.find(c => c.enrolled)?.id || courses[0]?.id || '1'),
       library: STUDENT_ROUTES.courses
     }
     navigate(routeMap[path] || path)
@@ -343,42 +407,50 @@ export default function StudentDashboard({ onLogout }) {
 
   const getAISuggestions = () => {
     const suggestions = []
-    if (confusionFeedbacks['ICT-102'] === 'Partially Understood' || confusionFeedbacks['ICT-102'] === 'Confused') {
+    courses.forEach(c => {
+      const cid = String(c.id || c.course_id)
+      const feedback = confusionFeedbacks[cid]
+      if (feedback === 'Confused' || feedback === 'Partially Understood') {
+        suggestions.push({
+          topic: c.title?.split('(')[0].trim() || c.title,
+          reason: `Flagged as ${feedback}`,
+          recommendation: `Review the latest lesson materials for ${c.title?.split('(')[0].trim() || c.title} and practice exercises.`,
+          actionTask: `Review ${c.title?.split('(')[0].trim() || c.title}`
+        })
+      }
+    })
+    const lowScores = quizHistory.filter(h => (h.percentage || 0) < 70)
+    if (lowScores.length > 0) {
       suggestions.push({
-        topic: 'Database Schema Normalization',
-        reason: 'Flagged as Confused',
-        recommendation: 'Re-watch G.G.H.H. Prabodhana’s Lesson 3 and practice 2NF mapping.',
-        actionTask: 'Construct normal forms grid practice'
-      })
-    }
-    const failedQuizzes = mockQuizzes.filter((q) => quizScoreReport?.quizId === q.id && quizScoreReport.percentage < 70)
-    if (failedQuizzes.length > 0 || !quizScoreReport) {
-      suggestions.push({
-        topic: 'Python Loops & Lists',
-        reason: 'Average quiz score requires boosting',
-        recommendation: 'Enroll in programming exercises list to unlock Level Up Badge.',
-        actionTask: 'Attempt coding constructs worksheet'
+        topic: 'Quiz Performance Improvement',
+        reason: 'Recent quiz score below 70%',
+        recommendation: 'Review the relevant course material and retry the quiz.',
+        actionTask: 'Practice quiz for weak areas'
       })
     }
     return suggestions
   }
 
-  const handleAddRecommendationToPlanner = (rec) => {
-    const isAlreadyAdded = plannerTasks.some((t) => t.text === rec.actionTask)
-    if (isAlreadyAdded) {
+  const handleAddRecommendationToPlanner = async (rec) => {
+    const taskText = `AI Task: ${rec.actionTask}`
+    if (plannerTasks.some(t => t.text === taskText || t.text === rec.actionTask)) {
       triggerToast('Already scheduled in your active agenda.')
       return
     }
-    const newTask = {
-      id: Date.now(),
-      text: `AI Task: ${rec.actionTask}`,
-      date: new Date().toISOString().split('T')[0],
-      completed: false,
-      isAI: true,
-      originalReason: rec.reason
-    }
-    setPlannerTasks([newTask, ...plannerTasks])
-    triggerToast('AI generated task injected successfully!')
+    if (!student?.student_id) { triggerToast('Please log in first.'); return }
+    try {
+      const res = await fetch('http://localhost:5000/api/planner/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ student_id: student.student_id, task_name: taskText, scheduled_date: new Date().toISOString().split('T')[0], task_type: 'ai', description: rec.reason })
+      })
+      const data = await res.json()
+      if (data.success && data.task) {
+        const t = data.task
+        setPlannerTasks(prev => [{ id: t.planner_id, text: t.task_name, date: t.scheduled_date, completed: t.is_completed, isAI: true, originalReason: rec.reason }, ...prev])
+        triggerToast('AI generated task injected successfully!')
+      }
+    } catch { triggerToast('Unable to connect to server.') }
   }
 
   const handleConfusionLevelSubmit = (courseId, level) => {
@@ -392,44 +464,88 @@ export default function StudentDashboard({ onLogout }) {
     triggerToast(msg)
   }
 
-  const handleAddTask = (e) => {
+  const handleAddTask = async (e) => {
     e.preventDefault()
     if (!newTaskText.trim()) return
-    const newTask = {
-      id: Date.now(),
-      text: newTaskText,
-      date: newTaskDate || new Date().toISOString().split('T')[0],
-      completed: false,
-      isAI: false
-    }
-    setPlannerTasks([newTask, ...plannerTasks])
-    setNewTaskText('')
-    setNewTaskDate('')
-    triggerToast('New goal successfully added to your planner!')
+    if (!student?.student_id) { triggerToast('Please log in first.'); return }
+    try {
+      const res = await fetch('http://localhost:5000/api/planner/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ student_id: student.student_id, task_name: newTaskText, scheduled_date: newTaskDate || new Date().toISOString().split('T')[0], task_type: 'study' })
+      })
+      const data = await res.json()
+      if (data.success && data.task) {
+        const t = data.task
+        setPlannerTasks(prev => [{ id: t.planner_id, text: t.task_name, date: t.scheduled_date, completed: t.is_completed, isAI: false }, ...prev])
+        setNewTaskText('')
+        setNewTaskDate('')
+        triggerToast('New goal successfully added to your planner!')
+      } else { triggerToast(data.message || 'Failed to add task.') }
+    } catch { triggerToast('Unable to connect to server.') }
   }
 
-  const handleToggleTask = (taskId) => {
-    setPlannerTasks(plannerTasks.map((task) =>
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    ))
-    triggerToast('Updated plan checkpoint state!')
+  const handleToggleTask = async (taskId) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/planner/toggle/${taskId}`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+      const data = await res.json()
+      if (data.success && data.task) {
+        setPlannerTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed: data.task.is_completed } : t))
+        triggerToast('Updated plan checkpoint state!')
+      }
+    } catch { /* silently keep local state */ }
   }
 
-  const handleDeleteTask = (taskId) => {
-    setPlannerTasks(plannerTasks.filter((task) => task.id !== taskId))
-    triggerToast('Goal removed from scheduling matrix.')
+  const handleDeleteTask = async (taskId) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/planner/delete/${taskId}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+      const data = await res.json()
+      if (data.success) {
+        setPlannerTasks(prev => prev.filter(t => t.id !== taskId))
+        triggerToast('Goal removed from scheduling matrix.')
+      }
+    } catch { triggerToast('Unable to connect to server.') }
   }
 
-  const handleEditTask = (taskId, updates) => {
-    setPlannerTasks(plannerTasks.map((task) =>
-      task.id === taskId ? { ...task, ...updates } : task
-    ))
-    triggerToast('Task updated successfully!')
+  const handleEditTask = async (taskId, updates) => {
+    const payload = {}
+    if (updates.text !== undefined) payload.task_name = updates.text
+    if (updates.date !== undefined) payload.scheduled_date = updates.date
+    if (updates.completed !== undefined) payload.is_completed = updates.completed
+    try {
+      const res = await fetch(`http://localhost:5000/api/planner/update/${taskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify(payload)
+      })
+      const data = await res.json()
+      if (data.success) {
+        setPlannerTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t))
+        triggerToast('Task updated successfully!')
+      }
+    } catch { triggerToast('Unable to connect to server.') }
   }
 
-  const handleEnrollCourse = (courseId) => {
-    setCourses(courses.map((c) => c.id === courseId ? { ...c, enrolled: true, progress: c.progress || 5 } : c))
-    triggerToast('Course enrollment successfully recorded.')
+  const handleEnrollCourse = async (courseId) => {
+    if (!student?.student_id) { triggerToast('Please log in to enroll.'); return }
+    try {
+      const res = await fetch('http://localhost:5000/api/course/enroll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ student_id: student.student_id, course_id: Number(courseId) })
+      })
+      const data = await res.json()
+      if (data.success) {
+        setCourses(prev => prev.map(c => String(c.id) === String(courseId) || String(c.course_id) === String(courseId) ? { ...c, enrolled: true } : c))
+        triggerToast('Course enrollment successfully recorded.')
+      } else { triggerToast(data.message || 'Enrollment failed.') }
+    } catch { triggerToast('Unable to connect to server.') }
   }
 
   const handleStartQuiz = (quiz) => {
@@ -441,7 +557,7 @@ export default function StudentDashboard({ onLogout }) {
 
   const handleStartQuizFromClassroom = (quiz) => {
     handleStartQuiz(quiz)
-    navigate(STUDENT_ROUTES.quiz(quiz.id))
+    navigate(STUDENT_ROUTES.quiz(quiz.quiz_id || quiz.id))
   }
 
   const handleQuizNext = () => {
@@ -558,18 +674,13 @@ export default function StudentDashboard({ onLogout }) {
 
   const buildWeakAreasSummary = () => {
     const weaknesses = []
-    if (confusionFeedbacks['ICT-101'] === 'Partially Understood' || confusionFeedbacks['ICT-101'] === 'Confused' || courses.find((c) => c.id === 'ICT-101')?.progress < 70) {
-      weaknesses.push('Python programming logic')
-    }
-    if (confusionFeedbacks['ICT-102'] === 'Partially Understood' || confusionFeedbacks['ICT-102'] === 'Confused' || courses.find((c) => c.id === 'ICT-102')?.progress < 70) {
-      weaknesses.push('Database systems')
-    }
-    if (confusionFeedbacks['ICT-103'] === 'Partially Understood' || confusionFeedbacks['ICT-103'] === 'Confused' || courses.find((c) => c.id === 'ICT-103')?.progress < 70) {
-      weaknesses.push('Networking & security')
-    }
-    if (confusionFeedbacks['ICT-104'] === 'Partially Understood' || confusionFeedbacks['ICT-104'] === 'Confused' || courses.find((c) => c.id === 'ICT-104')?.progress < 70) {
-      weaknesses.push('Systems analysis')
-    }
+    courses.forEach(c => {
+      const cid = String(c.id || c.course_id)
+      const feedback = confusionFeedbacks[cid]
+      if (feedback === 'Partially Understood' || feedback === 'Confused' || (c.progress || 0) < 70) {
+        weaknesses.push(c.title?.split('(')[0].trim() || c.title)
+      }
+    })
     return weaknesses.length > 0 ? weaknesses.join(', ') : 'No strong weakness detected yet. Keep learning!'
   }
 
@@ -663,67 +774,64 @@ export default function StudentDashboard({ onLogout }) {
   }
 
   const handleDownloadResource = (resource, course) => {
-    const content = `EduMate Learning Material\nCourse: ${course.id} - ${course.title}\nResource: ${resource.name}\nTutor: ${course.tutor}\n\n--- Demo content preview ---\nThis file was downloaded from the EduMate LMS student portal.`
+    const resourceName = resource.title || resource.name || 'material'
+    const content = `EduMate Learning Material\nCourse: ${course.course_id || course.id} - ${course.title}\nResource: ${resourceName}\nTutor: ${course.tutor || course.instructor || 'Unknown'}\n\n--- Downloaded from EduMate LMS ---`
     const blob = new Blob([content], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = resource.name.replace(/\s+/g, '_').replace(/[()]/g, '')
+    link.download = resourceName.replace(/\s+/g, '_').replace(/[()]/g, '')
     link.click()
     URL.revokeObjectURL(url)
-    triggerToast(`Downloaded ${resource.name}`)
+    triggerToast(`Downloaded ${resourceName}`)
   }
 
-  const handleGenerateSchedule = () => {
+  const handleGenerateSchedule = async () => {
+    if (!student?.student_id) { triggerToast('Please log in first.'); return }
     const today = new Date()
-    const generated = []
     const enrolled = courses.filter((c) => c.enrolled)
+    const existingTexts = new Set(plannerTasks.map((t) => t.text))
+    const generated = []
 
     enrolled.forEach((course, i) => {
       const date = new Date(today)
       date.setDate(date.getDate() + i + 1)
-      generated.push({
-        id: Date.now() + i,
-        text: `AI Schedule: Review ${course.title.split('(')[0].trim()} modules`,
-        date: date.toISOString().split('T')[0],
-        completed: false,
-        isAI: true,
-        originalReason: 'Generated from course progress analytics'
-      })
+      generated.push({ task_name: `AI Schedule: Review ${course.title.split('(')[0].trim()} modules`, scheduled_date: date.toISOString().split('T')[0], task_type: 'ai', description: 'Generated from course progress analytics' })
     })
 
-    if (confusionFeedbacks['ICT-102'] === 'Partially Understood' || confusionFeedbacks['ICT-102'] === 'Confused') {
-      const date = new Date(today)
-      date.setDate(date.getDate() + 2)
-      generated.push({
-        id: Date.now() + 50,
-        text: 'AI Schedule: Practice database normalization exercises',
-        date: date.toISOString().split('T')[0],
-        completed: false,
-        isAI: true,
-        originalReason: 'Triggered by confusion feedback on ICT-102'
-      })
-    }
+    courses.forEach(c => {
+      const cid = String(c.id || c.course_id)
+      if (confusionFeedbacks[cid] === 'Confused' || confusionFeedbacks[cid] === 'Partially Understood') {
+        const date = new Date(today)
+        date.setDate(date.getDate() + 2)
+        generated.push({ task_name: `AI Schedule: Practice weak area — ${c.title?.split('(')[0].trim()}`, scheduled_date: date.toISOString().split('T')[0], task_type: 'ai', description: `Triggered by confusion feedback on ${c.title}` })
+      }
+    })
 
     const quizDate = new Date(today)
     quizDate.setDate(quizDate.getDate() + 3)
-    generated.push({
-      id: Date.now() + 100,
-      text: 'AI Schedule: Attempt recommended quiz for weak areas',
-      date: quizDate.toISOString().split('T')[0],
-      completed: false,
-      isAI: true,
-      originalReason: 'Rule-based recommendation system'
-    })
+    generated.push({ task_name: 'AI Schedule: Attempt recommended quiz for weak areas', scheduled_date: quizDate.toISOString().split('T')[0], task_type: 'ai', description: 'Rule-based recommendation system' })
 
-    const existingTexts = new Set(plannerTasks.map((t) => t.text))
-    const toAdd = generated.filter((t) => !existingTexts.has(t.text))
-    if (toAdd.length === 0) {
-      triggerToast('Your study schedule is already up to date.')
-      return
+    const toAdd = generated.filter(t => !existingTexts.has(t.task_name))
+    if (toAdd.length === 0) { triggerToast('Your study schedule is already up to date.'); return }
+
+    let added = 0
+    for (const taskData of toAdd) {
+      try {
+        const res = await fetch('http://localhost:5000/api/planner/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ student_id: student.student_id, ...taskData })
+        })
+        const data = await res.json()
+        if (data.success && data.task) {
+          const t = data.task
+          setPlannerTasks(prev => [{ id: t.planner_id, text: t.task_name, date: t.scheduled_date, completed: false, isAI: true, originalReason: taskData.description }, ...prev])
+          added++
+        }
+      } catch { /* skip */ }
     }
-    setPlannerTasks([...toAdd, ...plannerTasks])
-    triggerToast(`Generated ${toAdd.length} AI study tasks for the week!`)
+    triggerToast(added > 0 ? `Generated ${added} AI study tasks for the week!` : 'Unable to generate tasks right now.')
   }
 
   const handlePostSkill = (skill, description) => {
@@ -827,7 +935,7 @@ export default function StudentDashboard({ onLogout }) {
         </nav>
 
         <div className="sidebar-footer">
-          <button className="logout-pill" type="button" onClick={onLogout}>
+          <button className="logout-pill" type="button" onClick={() => setShowLogoutConfirm(true)}>
             Log Out
           </button>
         </div>
@@ -855,7 +963,7 @@ export default function StudentDashboard({ onLogout }) {
               Student
               <ChevronDown size={16} />
             </button>
-            <button className="logout-pill" type="button" onClick={onLogout}>
+            <button className="logout-pill" type="button" onClick={() => setShowLogoutConfirm(true)}>
               Log Out
             </button>
           </div>
@@ -915,26 +1023,18 @@ export default function StudentDashboard({ onLogout }) {
               <CourseMaterialsPage courses={courses} onDownloadResource={handleDownloadResource} />
             )} />
             <Route path={STUDENT_ROUTES.quizzes} element={(
-              <QuizListPage mockQuizzes={mockQuizzes} isQuizCompleted={isQuizCompleted} adaptiveDifficulty={getAdaptiveDifficulty()} />
+              <QuizListPage mockQuizzes={quizzes} isQuizCompleted={isQuizCompleted} adaptiveDifficulty={getAdaptiveDifficulty()} isLoading={isLoadingQuizzes} error={quizError} />
             )} />
             <Route path="/quiz/:id" element={(
               <QuizAttemptPage
-                mockQuizzes={mockQuizzes}
-                currentQuizQuestionIndex={currentQuizQuestionIndex}
-                quizSelectedAnswers={quizSelectedAnswers}
-                handleSelectQuizOption={handleSelectQuizOption}
-                handleSubmitQuizAnswers={handleSubmitQuizAnswers}
-                handleQuizNext={handleQuizNext}
-                handleQuizPrev={handleQuizPrev}
-                setActiveQuizObj={setActiveQuizObj}
-                setCurrentQuizQuestionIndex={setCurrentQuizQuestionIndex}
-                setQuizSelectedAnswers={setQuizSelectedAnswers}
-                setActiveQuizState={setActiveQuizState}
+                student={student}
+                token={token}
+                onQuizSubmitted={handleQuizSubmitted}
                 triggerToast={triggerToast}
               />
             )} />
             <Route path="/result/:id" element={(
-              <QuizResultPage quizHistory={quizHistory} mockQuizzes={mockQuizzes} />
+              <QuizResultPage quizHistory={quizHistory} mockQuizzes={quizzes} />
             )} />
             <Route path={STUDENT_ROUTES.performance} element={(
               <PerformancePage
@@ -974,7 +1074,7 @@ export default function StudentDashboard({ onLogout }) {
               <LeaderboardPage leaderboardEntries={leaderboardEntries} studentProfile={studentProfile} getRankInfo={getRankInfo} />
             )} />
             <Route path={STUDENT_ROUTES.profile} element={(
-              <ProfilePage studentProfile={studentProfile} setStudentProfile={setStudentProfile} points={points} badges={badges} triggerToast={triggerToast} />
+              <ProfilePage studentProfile={studentProfile} setStudentProfile={setStudentProfile} points={points} badges={badges} triggerToast={triggerToast} student={student} token={token} />
             )} />
             <Route path={STUDENT_ROUTES.attendance} element={(
               <AttendancePage attendanceRecords={attendanceRecords} courses={courses} attendancePercentage={attendancePercentage} />
@@ -987,6 +1087,15 @@ export default function StudentDashboard({ onLogout }) {
         </div>
       </main>
 
+      <ConfirmationModal
+        open={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        title="Log Out?"
+        message="Are you sure you want to log out of your student portal?"
+        confirmText="Log Out"
+        onConfirm={onLogout}
+        type="logout"
+      />
     </div>
   )
 }

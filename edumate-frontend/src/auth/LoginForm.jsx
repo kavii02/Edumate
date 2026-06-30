@@ -4,7 +4,6 @@ export default function LoginForm({
   password,
   showPassword,
   error,
-  submitting = false,
   onEmailChange,
   onPasswordChange,
   onToggleShowPassword,
@@ -13,12 +12,6 @@ export default function LoginForm({
   onRegister,
   onForgotPassword,
 }) {
-  const isTutor = role === 'Tutor'
-  const emailLabel = isTutor ? 'Email' : 'Username'
-  const emailPlaceholder = isTutor
-    ? 'Enter tutor email'
-    : `Enter ${role.toLowerCase()} username`
-
   return (
     <div className="login-shell">
       <div className="login-card">
@@ -35,13 +28,12 @@ export default function LoginForm({
 
         <form className="login-form" onSubmit={onSubmit}>
           <label className="field-group">
-            <span>{emailLabel}</span>
+            <span>Username</span>
             <input
-              type={isTutor ? 'email' : 'text'}
+              type="text"
               value={email}
               onChange={(e) => onEmailChange(e.target.value)}
-              placeholder={emailPlaceholder}
-              disabled={submitting}
+              placeholder={`Enter ${role.toLowerCase()} username`}
             />
           </label>
 
@@ -53,7 +45,6 @@ export default function LoginForm({
                 value={password}
                 onChange={(e) => onPasswordChange(e.target.value)}
                 placeholder="Enter your password"
-                disabled={submitting}
               />
               <button type="button" className="password-toggle" onClick={onToggleShowPassword}>
                 {showPassword ? 'Hide' : 'Show'}
@@ -61,24 +52,15 @@ export default function LoginForm({
             </div>
           </label>
 
-          {isTutor && (
-            <p className="brand-description" style={{ marginTop: 0 }}>
-              Password must be at least 8 characters and include uppercase, lowercase, a number, and a special character.
-            </p>
-          )}
-
           {error && <p className="error-text">{error}</p>}
 
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <button type="submit" className="submit-button" disabled={submitting}>
-              {submitting ? 'Logging in...' : 'Login'}
-            </button>
+            <button type="submit" className="submit-button">Login</button>
             {role === 'Student' && (
               <button
                 type="button"
                 className="submit-button outline"
                 onClick={onRegister}
-                disabled={submitting}
               >
                 Register
               </button>

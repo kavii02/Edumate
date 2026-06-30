@@ -1,13 +1,15 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Plus, Edit3, Trash2, X, Check } from 'lucide-react'
 
-export default function MySkills() {
-  const [skills, setSkills] = useState([
-    { id: 1, name: 'Python Basics', category: 'Programming', level: 'Intermediate', description: 'Can teach control flow loops, arrays, and algorithmic logic setups.' },
-    { id: 2, name: 'HTML Semantic Structure', category: 'Web Development', level: 'Advanced', description: 'Structuring accessible sites for projects.' }
-  ])
+const API_BASE_URL = 'http://localhost:5000'
 
-  // Form input handling states
+export default function MySkills() {
+  const studentId = parseInt(localStorage.getItem('edumate_student_id') || '1', 10)
+
+  const [skills, setSkills] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState(null)
 
@@ -15,6 +17,23 @@ export default function MySkills() {
   const [formCategory, setFormCategory] = useState('Programming')
   const [formLevel, setFormLevel] = useState('Beginner')
   const [formDesc, setFormDesc] = useState('')
+
+  useEffect(() => {
+    fetchSkills()
+  }, [])
+
+  const fetchSkills = async () => {
+    try {
+      setLoading(true)
+      const res = await fetch(`${API_BASE_URL}/api/skills/student/${studentId}`)
+      const data = await res.json()
+      if (res.ok) setSkills(data)
+    } catch (err) {
+      console.error('Failed to load skills:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleOpenAdd = () => {
     setFormName('')
@@ -34,33 +53,74 @@ export default function MySkills() {
     setIsAdding(false)
   }
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault()
     if (!formName.trim() || !formDesc.trim()) return
 
-    if (editingId) {
-      // Handle Edit (Update Operation)
-      setSkills(skills.map(s => s.id === editingId ? {
-        ...s, name: formName, category: formCategory, level: formLevel, description: formDesc
-      } : s))
-      setEditingId(null)
-    } else {
-      // Handle Add (Create Operation)
-      const newSkill = {
-        id: Date.now(),
-        name: formName,
-        category: formCategory,
-        level: formLevel,
-        description: formDesc
+    setSaving(true)
+    try {
+      if (editingId) {
+        const res = await fetch(`${API_BASE_URL}/api/skills/${editingId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formName,
+            category: formCategory,
+            level: formLevel,
+            description: formDesc
+          })
+        })
+        if (res.ok) {
+          setSkills(skills.map(s => s.id === editingId
+            ? { ...s, name: formName, category: formCategory, level: formLevel, description: formDesc }
+            : s
+          ))
+          setEditingId(null)
+        } else {
+          alert('Failed to update skill.')
+        }
+      } else {
+        const res = await fetch(`${API_BASE_URL}/api/skills/student/${studentId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formName,
+            category: formCategory,
+            level: formLevel,
+            description: formDesc
+          })
+        })
+        const data = await res.json()
+        if (res.ok) {
+          setSkills([...skills, data])
+          setIsAdding(false)
+        } else {
+          alert(data.error || 'Failed to add skill.')
+        }
       }
-      setSkills([...skills, newSkill])
-      setIsAdding(false)
+    } catch (err) {
+      console.error('Save error:', err)
+      alert('Server error. Please try again.')
+    } finally {
+      setSaving(false)
     }
   }
 
-  const handleDelete = (id) => {
-    if (confirm('Are you sure you want to delete this skill entry?')) {
-      setSkills(skills.filter(s => s.id !== id))
+  const handleDelete = async (id) => {
+    if (!confirm('Are you sure you want to delete this skill?')) return
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/skills/${id}`, {
+        method: 'DELETE'
+      })
+      if (res.ok) {
+        setSkills(skills.filter(s => s.id !== id))
+      } else {
+        alert('Failed to delete skill.')
+      }
+    } catch (err) {
+      console.error('Delete error:', err)
+      alert('Server error. Please try again.')
     }
   }
 
@@ -79,7 +139,7 @@ export default function MySkills() {
         )}
       </div>
 
-      {/* Form Area - Conditional rendering based on state */}
+      {/* Add / Edit form */}
       {(isAdding || editingId) && (
         <div className="barter-form-wrapper glass-card neon-card-purple">
           <h3>{editingId ? 'Edit Skill Information' : 'Add Skill to Profile Portfolio'}</h3>
@@ -87,7 +147,13 @@ export default function MySkills() {
             <div className="form-grid-row">
               <label className="field-group">
                 <span>Skill Name</span>
-                <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g. Java OOP, Subnetting" required />
+                <input
+                  type="text"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  placeholder="e.g. Java OOP, Subnetting"
+                  required
+                />
               </label>
 
               <label className="field-group">
@@ -106,32 +172,42 @@ export default function MySkills() {
                   <option value="Beginner">Beginner</option>
                   <option value="Intermediate">Intermediate</option>
                   <option value="Advanced">Advanced</option>
-                  <option value="Expert">Expert</option>
                 </select>
               </label>
             </div>
 
             <label className="field-group textarea-full">
               <span>Short Description</span>
-              <textarea rows="3" value={formDesc} onChange={(e) => setFormDesc(e.target.value)} placeholder="Describe what concepts you understand well and can explain clearly..." required></textarea>
+              <textarea
+                rows="3"
+                value={formDesc}
+                onChange={(e) => setFormDesc(e.target.value)}
+                placeholder="Describe what concepts you understand well and can explain clearly..."
+                required
+              />
             </label>
 
             <div className="form-actions-row">
-              <button type="button" className="barter-action-btn outline" onClick={() => { setIsAdding(false); setEditingId(null); }}>
+              <button
+                type="button"
+                className="barter-action-btn outline"
+                onClick={() => { setIsAdding(false); setEditingId(null) }}
+                disabled={saving}
+              >
                 <X size={16} />
                 <span>Cancel</span>
               </button>
-              <button type="submit" className="barter-action-btn primary">
+              <button type="submit" className="barter-action-btn primary" disabled={saving}>
                 <Check size={16} />
-                <span>{editingId ? 'Update Skill' : 'Save Skill'}</span>
+                <span>{saving ? 'Saving…' : editingId ? 'Update Skill' : 'Save Skill'}</span>
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Skill List Presentation Table Area */}
-      <div className="table-responsive-container" glass-card>
+      {/* Skill List Table */}
+      <div className="table-responsive-container">
         <table className="barter-display-table">
           <thead>
             <tr>
@@ -143,28 +219,43 @@ export default function MySkills() {
             </tr>
           </thead>
           <tbody>
-            {skills.map((skill) => (
-              <tr key={skill.id}>
-                <td style={{ fontWeight: 600, color: '#f8fafc' }}>{skill.name}</td>
-                <td><span className="table-category-pill">{skill.category}</span></td>
-                <td><span className={`level-badge ${skill.level.toLowerCase()}`}>{skill.level}</span></td>
-                <td className="table-desc-cell">{skill.description}</td>
-                <td>
-                  <div className="table-actions-cluster">
-                    <button type="button" className="icon-action-btn edit-btn" onClick={() => handleOpenEdit(skill)} title="Edit Entry">
-                      <Edit3 size={14} />
-                    </button>
-                    <button type="button" className="icon-action-btn delete-btn" onClick={() => handleDelete(skill.id)} title="Delete Entry">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {skills.length === 0 && (
+            {loading ? (
               <tr>
-                <td colSpan="5" className="empty-table-state">No custom skills defined yet. Add one above!</td>
+                <td colSpan="5" className="empty-table-state">Loading your skills…</td>
               </tr>
+            ) : skills.length === 0 ? (
+              <tr>
+                <td colSpan="5" className="empty-table-state">No skills added yet. Add one above!</td>
+              </tr>
+            ) : (
+              skills.map((skill) => (
+                <tr key={skill.id}>
+                  <td style={{ fontWeight: 600, color: '#f8fafc' }}>{skill.name}</td>
+                  <td><span className="table-category-pill">{skill.category}</span></td>
+                  <td><span className={`level-badge ${(skill.level || '').toLowerCase()}`}>{skill.level}</span></td>
+                  <td className="table-desc-cell">{skill.description}</td>
+                  <td>
+                    <div className="table-actions-cluster">
+                      <button
+                        type="button"
+                        className="icon-action-btn edit-btn"
+                        onClick={() => handleOpenEdit(skill)}
+                        title="Edit Entry"
+                      >
+                        <Edit3 size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-action-btn delete-btn"
+                        onClick={() => handleDelete(skill.id)}
+                        title="Delete Entry"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>

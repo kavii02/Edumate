@@ -4,13 +4,15 @@ import {
   User,
   GitPullRequest,
   Users2,
-  Sparkles
+  Sparkles,
+  MessageCircle
 } from 'lucide-react'
 
 import BrowseSkills from './BrowseSkills'
 import MySkills from './MySkills'
 import SkillRequests from './SkillRequests'
 import PeerMatching from './PeerMatching'
+import SkillMessages from './SkillMessages'
 import './SkillBarter.css'
 
 export default function SkillBarterContainer() {
@@ -32,6 +34,10 @@ export default function SkillBarterContainer() {
     {
       name: 'Peer Matching',
       icon: <Users2 size={18} />
+    },
+    {
+      name: 'Messages',
+      icon: <MessageCircle size={18} />
     }
   ]
 
@@ -48,6 +54,9 @@ export default function SkillBarterContainer() {
 
       case 'Peer Matching':
         return <PeerMatching />
+
+      case 'Messages':
+        return <SkillMessages />
 
       default:
         return <BrowseSkills />

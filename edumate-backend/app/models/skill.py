@@ -15,7 +15,7 @@ class Skill(db.Model):
 
         student_name = "Unknown"
 
-        from .student import Student
+        from app.student.models.student_model import Student
 
         student = Student.query.get(self.student_id)
 

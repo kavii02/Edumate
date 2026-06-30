@@ -9,27 +9,57 @@ const AVATAR_OPTIONS = [
   { emoji: '💡', color: 'bg-yellow-500' }
 ]
 
-export default function ProfilePage({ studentProfile, setStudentProfile, points, badges, triggerToast }) {
+export default function ProfilePage({ studentProfile, setStudentProfile, points, badges, triggerToast, student, token }) {
   const [editMode, setEditMode] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     name: studentProfile.name,
     email: studentProfile.email,
-    school: studentProfile.school || 'Uva Wellassa University',
+    school: studentProfile.school || '',
     avatarEmoji: studentProfile.avatarEmoji || '🙂',
     avatarColor: studentProfile.avatarColor || 'bg-purple-600'
   })
 
-  const handleSave = () => {
-    setStudentProfile((prev) => ({
-      ...prev,
-      name: form.name,
-      email: form.email,
-      school: form.school,
-      avatarEmoji: form.avatarEmoji,
-      avatarColor: form.avatarColor
-    }))
-    setEditMode(false)
-    triggerToast?.('Profile updated successfully!')
+  const handleSave = async () => {
+    if (!student?.student_id) {
+      triggerToast?.('Cannot save: no student session found.')
+      return
+    }
+
+    const nameParts = form.name.trim().split(' ')
+    const first_name = nameParts[0] || ''
+    const last_name = nameParts.slice(1).join(' ') || ''
+
+    setSaving(true)
+    try {
+      const res = await fetch(`http://localhost:5000/api/student/profile/${student.student_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ first_name, last_name, email: form.email, school_name: form.school })
+      })
+      const data = await res.json()
+      if (data.success) {
+        setStudentProfile((prev) => ({
+          ...prev,
+          name: form.name,
+          email: form.email,
+          school: form.school,
+          avatarEmoji: form.avatarEmoji,
+          avatarColor: form.avatarColor
+        }))
+        setEditMode(false)
+        triggerToast?.('Profile updated successfully!')
+      } else {
+        triggerToast?.(data.message || 'Update failed.')
+      }
+    } catch {
+      triggerToast?.('Unable to connect to server.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -45,7 +75,14 @@ export default function ProfilePage({ studentProfile, setStudentProfile, points,
           </button>
         ) : (
           <div className="flex gap-2">
-            <button type="button" onClick={handleSave} className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 text-sm font-bold">Save</button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 text-sm font-bold disabled:opacity-60"
+            >
+              {saving ? 'Saving...' : 'Save'}
+            </button>
             <button type="button" onClick={() => setEditMode(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 text-sm font-bold border border-slate-700">Cancel</button>
           </div>
         )}
@@ -95,7 +132,7 @@ export default function ProfilePage({ studentProfile, setStudentProfile, points,
                 </div>
                 <p className="text-sm text-slate-400">{studentProfile.email}</p>
                 <p className="text-sm text-slate-300"><strong>Index:</strong> {studentProfile.indexNo}</p>
-                <p className="text-sm text-slate-300"><strong>School:</strong> {studentProfile.school || 'Uva Wellassa University'}</p>
+                <p className="text-sm text-slate-300"><strong>School:</strong> {studentProfile.school || 'Not specified'}</p>
                 <p className="text-sm text-slate-300"><strong>Points:</strong> {points}</p>
                 <p className="text-sm text-slate-300"><strong>Badges:</strong> {badges.filter((b) => b.unlocked).map((b) => b.name).join(', ') || 'None yet'}</p>
               </>

@@ -9,8 +9,12 @@ const levelStyles = {
 
 export default function QuizResultPage({ quizHistory, mockQuizzes }) {
   const { id } = useParams()
-  const result = quizHistory.find((h) => h.quizId === id)
-  const quiz = mockQuizzes.find((q) => q.id === id)
+  const result = quizHistory.find(
+    (h) => String(h.quiz_id) === String(id) || String(h.quizId) === String(id)
+  )
+  const quiz = (mockQuizzes || []).find(
+    (q) => String(q.quiz_id) === String(id) || String(q.id) === String(id)
+  )
 
   if (!result) {
     return (
@@ -23,25 +27,22 @@ export default function QuizResultPage({ quizHistory, mockQuizzes }) {
     )
   }
 
-  const wrongCount = result.totalCount != null
-    ? result.totalCount - result.correctCount
-    : quiz
-      ? quiz.questions.length - Math.round((result.percentage / 100) * quiz.questions.length)
-      : 0
-  const correctCount = result.correctCount ?? (quiz ? quiz.questions.length - wrongCount : 0)
+  const totalCount = result.total_questions ?? result.totalCount ?? (quiz?.questions?.length ?? 0)
+  const correctCount = result.score ?? result.correctCount ?? Math.round((result.percentage / 100) * totalCount)
+  const wrongCount = totalCount - correctCount
 
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
         <h2 className="text-2xl font-bold text-white">Quiz Result</h2>
-        <p className="text-sm text-slate-400">{result.quizTitle}</p>
+        <p className="text-sm text-slate-400">{result.quiz_title ?? result.quizTitle ?? 'Quiz'}</p>
       </div>
 
       <div className="p-8 rounded-3xl bg-slate-950/80 border border-slate-800 text-center">
         <p className="text-5xl font-black text-cyan-400">{result.percentage}%</p>
         <p className="text-sm text-slate-400 mt-2">Score</p>
         {result.level && (
-          <span className={`inline-block mt-4 text-xs font-bold uppercase px-3 py-1 rounded-full border ${levelStyles[result.level]}`}>
+          <span className={`inline-block mt-4 text-xs font-bold uppercase px-3 py-1 rounded-full border ${levelStyles[result.level] || ''}`}>
             {result.level} level
           </span>
         )}

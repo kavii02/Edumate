@@ -44,9 +44,9 @@ export default function BrowseSkills() {
       <div className="barter-toolbar">
         <div className="search-input-wrapper">
           <Search size={16} className="search-box-icon" />
-          <input 
-            type="text" 
-            placeholder="Search skills, topics, concepts..." 
+          <input
+            type="text"
+            placeholder="Search skills, topics, concepts..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -80,9 +80,9 @@ export default function BrowseSkills() {
               <h3>{item.skill}</h3>
               <p className="card-owner">Offered by: <span>{item.student}</span></p>
               <p className="card-description">{item.desc}</p>
-              
-              <button 
-                type="button" 
+
+              <button
+                type="button"
                 className="barter-action-btn primary"
                 onClick={() => handleRequestSkill(item.id)}
               >

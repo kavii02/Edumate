@@ -384,11 +384,10 @@ const Courses = () => {
 
           {modalMessage && selectedCourse && (
             <p
-              className={`mt-4 rounded-2xl px-4 py-3 text-sm ${
-                modalMessage.toLowerCase().includes("success")
+              className={`mt-4 rounded-2xl px-4 py-3 text-sm ${modalMessage.toLowerCase().includes("success")
                   ? "bg-emerald-500/20 text-emerald-200"
                   : "bg-rose-500/20 text-rose-200"
-              }`}
+                }`}
             >
               {modalMessage}
             </p>
