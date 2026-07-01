@@ -164,15 +164,14 @@ export default function ClassroomsPage({
               key={level}
               type="button"
               onClick={() => handleConfusionLevelSubmit?.(String(selectedCourse.id), level)}
-              className={`px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${
-                currentFeedback === level
+              className={`px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${currentFeedback === level
                   ? level === 'Understood'
                     ? 'bg-emerald-500 text-slate-950 ring-2 ring-emerald-400'
                     : level === 'Partially Understood'
                       ? 'bg-amber-500 text-slate-950 ring-2 ring-amber-400'
                       : 'bg-rose-500 text-white ring-2 ring-rose-400'
                   : 'bg-slate-900 text-slate-300 border border-slate-800 hover:border-cyan-500/30'
-              }`}
+                }`}
             >
               {level}
             </button>

@@ -402,6 +402,7 @@ body {
 }
 
 @media (max-width: 900px) {
+
   .dashboard-grid,
   .dashboard-panel {
     grid-template-columns: 1fr;
@@ -486,10 +487,12 @@ body {
     border-color: rgba(168, 85, 247, 0.25);
     box-shadow: 0 0 40px rgba(168, 85, 247, 0.12);
   }
+
   50% {
     border-color: rgba(236, 72, 153, 0.35);
     box-shadow: 0 0 50px rgba(168, 85, 247, 0.22);
   }
+
   100% {
     border-color: rgba(167, 139, 250, 0.25);
     box-shadow: 0 0 40px rgba(168, 85, 247, 0.12);
@@ -725,10 +728,12 @@ body {
     box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.06), 0 0 20px rgba(139, 92, 246, 0.03);
     border-color: rgba(56, 189, 248, 0.08);
   }
+
   50% {
     box-shadow: 0 0 18px 4px rgba(56, 189, 248, 0.18), 0 0 34px rgba(139, 92, 246, 0.08);
     border-color: rgba(56, 189, 248, 0.22);
   }
+
   100% {
     box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.06), 0 0 20px rgba(139, 92, 246, 0.03);
     border-color: rgba(56, 189, 248, 0.08);
@@ -1065,6 +1070,7 @@ body {
 }
 
 @media (max-width: 980px) {
+
   .profile-overview-grid,
   .skills-grid {
     grid-template-columns: 1fr;
@@ -1147,10 +1153,12 @@ body {
     border-color: #b300ff;
     box-shadow: 0 0 10px #b300ff, 0 0 20px #b300ff, inset 0 0 10px rgba(179, 0, 255, 0.1);
   }
+
   50% {
     border-color: #ff00ff;
     box-shadow: 0 0 20px #ff00ff, 0 0 40px #b300ff, inset 0 0 15px rgba(179, 0, 255, 0.2);
   }
+
   100% {
     border-color: #b300ff;
     box-shadow: 0 0 10px #b300ff, 0 0 20px #b300ff, inset 0 0 10px rgba(179, 0, 255, 0.1);
@@ -1162,10 +1170,12 @@ body {
     border-color: #00d4ff;
     box-shadow: 0 0 10px #00d4ff, 0 0 20px #00d4ff, inset 0 0 10px rgba(0, 212, 255, 0.1);
   }
+
   50% {
     border-color: #00ffff;
     box-shadow: 0 0 20px #00ffff, 0 0 40px #00d4ff, inset 0 0 15px rgba(0, 212, 255, 0.2);
   }
+
   100% {
     border-color: #00d4ff;
     box-shadow: 0 0 10px #00d4ff, 0 0 20px #00d4ff, inset 0 0 10px rgba(0, 212, 255, 0.1);
@@ -1396,7 +1406,10 @@ body {
   min-width: 280px;
 }
 
-.skill-filter label { display: none; }
+.skill-filter label {
+  display: none;
+}
+
 .skill-filter select {
   background: rgba(30, 41, 59, 0.8);
   border: 1px solid rgba(34, 211, 238, 0.2);
@@ -1418,9 +1431,25 @@ body {
   border: 1px solid rgba(34, 211, 238, 0.12);
 }
 
-.skill-card-inner { display: flex; flex-direction: column; gap: 0.75rem; }
-.skill-title { margin: 0; color: #f8fafc; font-size: 1.05rem; }
-.skill-meta { display: flex; justify-content: space-between; color: #cbd5e1; font-size: 0.95rem; }
+.skill-card-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.skill-title {
+  margin: 0;
+  color: #f8fafc;
+  font-size: 1.05rem;
+}
+
+.skill-meta {
+  display: flex;
+  justify-content: space-between;
+  color: #cbd5e1;
+  font-size: 0.95rem;
+}
+
 .request-button {
   margin-top: 0.5rem;
   background: rgba(34, 197, 94, 0.12);
@@ -1432,7 +1461,9 @@ body {
 }
 
 @media (max-width: 900px) {
-  .skill-market-grid { grid-template-columns: 1fr; }
+  .skill-market-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .dashboard-panel-card ul {
@@ -2035,7 +2066,7 @@ body {
   flex-wrap: wrap;
 }
 
-.reports-header > div:first-child {
+.reports-header>div:first-child {
   flex: 1;
   min-width: 250px;
 }
@@ -2506,13 +2537,14 @@ body {
   .admin-sidebar {
     order: 2;
   }
-  
+
   .dashboard-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 760px) {
+
   .admin-main-header,
   .user-management-controls,
   .table-header-row {
@@ -2531,7 +2563,7 @@ body {
   .user-management-filter select {
     width: 100%;
   }
-  
+
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
@@ -2580,7 +2612,7 @@ body {
   align-items: center;
   gap: 0.6rem;
   color: #c4b5fd;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   padding-bottom: 0.75rem;
 }
 
@@ -2639,8 +2671,8 @@ body {
 }
 
 .settings-field input {
-  background: rgba(15,23,42,0.96);
-  border: 1px solid rgba(100,116,139,0.2);
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(100, 116, 139, 0.2);
   color: #f8fafc;
   padding: 0.72rem 1rem;
   border-radius: 12px;
@@ -2652,8 +2684,8 @@ body {
 }
 
 .settings-field input:focus {
-  border-color: rgba(124,58,237,0.6);
-  box-shadow: 0 0 0 3px rgba(124,58,237,0.1);
+  border-color: rgba(124, 58, 237, 0.6);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
 }
 
 .settings-pw-wrap {
@@ -2680,7 +2712,9 @@ body {
   transition: color 0.15s;
 }
 
-.pw-toggle-btn:hover { color: #c4b5fd; }
+.pw-toggle-btn:hover {
+  color: #c4b5fd;
+}
 
 .settings-save-btn {
   display: inline-flex;
@@ -2718,15 +2752,15 @@ body {
 }
 
 .settings-feedback.success {
-  background: rgba(16,185,129,0.12);
+  background: rgba(16, 185, 129, 0.12);
   color: #34d399;
-  border: 1px solid rgba(16,185,129,0.2);
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 .settings-feedback.error {
-  background: rgba(239,68,68,0.1);
+  background: rgba(239, 68, 68, 0.1);
   color: #f87171;
-  border: 1px solid rgba(239,68,68,0.2);
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 /* ==========================================================================
@@ -2736,7 +2770,7 @@ body {
 .report-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.65);
+  background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -2772,7 +2806,7 @@ body {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
-  background: rgba(15,23,42,0.6);
+  background: rgba(15, 23, 42, 0.6);
   border-radius: 14px;
   padding: 1rem;
 }
@@ -2799,8 +2833,13 @@ body {
   letter-spacing: 0.05em;
 }
 
-.pending-color { color: #fbbf24; }
-.resolved-color { color: #34d399; }
+.pending-color {
+  color: #fbbf24;
+}
+
+.resolved-color {
+  color: #34d399;
+}
 
 .rs-section-title {
   margin: 0;
@@ -2816,7 +2855,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0.5rem 0;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .rs-reason-count {
@@ -2853,8 +2892,8 @@ body {
 .reports-filter-wrap select {
   width: 100%;
   padding: 0.65rem 1rem 0.65rem 2.4rem;
-  background: rgba(15,23,42,0.96);
-  border: 1px solid rgba(100,116,139,0.18);
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(100, 116, 139, 0.18);
   color: #f8fafc;
   border-radius: 12px;
   outline: none;
@@ -2864,7 +2903,7 @@ body {
 
 .reports-search-wrap input:focus,
 .reports-filter-wrap select:focus {
-  border-color: rgba(139,92,246,0.5);
+  border-color: rgba(139, 92, 246, 0.5);
 }
 
 .ctrl-icon {

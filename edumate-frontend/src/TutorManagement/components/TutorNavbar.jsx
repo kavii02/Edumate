@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Bell, User, Settings, Lock, LogOut, CheckCircle, HelpCircle } from "lucide-react";
+import { Bell, User, Lock, LogOut, CheckCircle, HelpCircle } from "lucide-react";
+import { useTutorAuth } from "../context/TutorAuthContext";
 
 const pageTitles = {
   "/tutor": "Tutor Dashboard",
@@ -18,8 +19,11 @@ const pageTitles = {
 const TutorNavbar = () => {
   const [openProfile, setOpenProfile] = useState(false);
   const location = useLocation();
+  const { tutor, logout } = useTutorAuth();
   const currentPath = location.pathname.replace(/\/$/, "");
   const pageTitle = pageTitles[currentPath] || "Tutor Dashboard";
+  const tutorName = tutor?.full_name || "Tutor";
+  const tutorEmail = tutor?.email || "tutor@edumate.lk";
 
   return (
     <header className="h-20 px-8 flex items-center justify-between bg-[#02111f]/90 backdrop-blur-xl border-b border-cyan-400/20 shadow-[0_0_20px_rgba(34,211,238,0.15)]">
@@ -51,8 +55,8 @@ const TutorNavbar = () => {
           {openProfile && (
             <div className="absolute right-0 mt-4 w-56 rounded-2xl border border-cyan-400/30 bg-[#061527] shadow-[0_0_25px_rgba(34,211,238,0.35)] overflow-hidden z-50">
               <div className="px-4 py-4 border-b border-cyan-400/10">
-                <p className="font-semibold text-white">Tutor Name</p>
-                <p className="text-sm text-slate-400">tutor@edumate.lk</p>
+                <p className="font-semibold text-white">{tutorName}</p>
+                <p className="text-sm text-slate-400">{tutorEmail}</p>
               </div>
 
               <div className="p-2">
@@ -91,7 +95,11 @@ const TutorNavbar = () => {
                   <HelpCircle size={18} /> Help & Support
                 </Link>
 
-                <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-300 hover:bg-red-500/10">
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-300 hover:bg-red-500/10"
+                >
                   <LogOut size={18} /> Logout
                 </button>
               </div>

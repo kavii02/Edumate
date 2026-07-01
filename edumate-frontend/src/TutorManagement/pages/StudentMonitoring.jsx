@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import {
   TrendingUp,
   BarChart3,
@@ -7,51 +8,106 @@ import {
   BookOpen,
   Activity,
 } from "lucide-react";
+import { useTutorAuth } from "../context/TutorAuthContext";
+import { getStudentMonitoring } from "../services/tutorApiService";
 
-const studentPerformance = [
-  { name: "Student A", score: 85 },
-  { name: "Student B", score: 42 },
-  { name: "Student C", score: 67 },
-  { name: "Student D", score: 74 },
-  { name: "Student E", score: 58 },
-];
-
-const weakStudents = ["Kasuni", "Nadeesha", "Tharushi"];
-const averageStudents = ["Ishara", "Malith", "Sajith"];
-const highPerformers = ["Chamari", "Hiran", "Nimali"];
-
-const confusionData = [
-  { topic: "Database Lesson", understood: 15, partial: 20, confused: 12 },
-  { topic: "Programming Logic", understood: 12, partial: 18, confused: 20 },
-  { topic: "Networking", understood: 24, partial: 8, confused: 4 },
-];
-
-const topicDifficulty = [
-  { topic: "Programming Logic", confused: 70 },
-  { topic: "Normalization", confused: 60 },
-  { topic: "Networking", confused: 20 },
-];
-
-const attendanceData = [
-  { name: "Student A", attendance: 95 },
-  { name: "Student B", attendance: 40 },
-  { name: "Student C", attendance: 82 },
-];
-
-const progressHistory = [
-  { quiz: "Quiz 1", score: 40 },
-  { quiz: "Quiz 2", score: 55 },
-  { quiz: "Quiz 3", score: 70 },
-];
+const emptyMonitoring = {
+  summary: {
+    total_students: 0,
+    average_quiz_score: 0,
+    average_attendance: 0,
+    weak_students: 0,
+    average_students: 0,
+    high_performers: 0,
+    attendance_risk: 0,
+  },
+  student_performance: [],
+  weak_students: [],
+  average_students: [],
+  high_performers: [],
+  attendance_risk_students: [],
+  attendance_data: [],
+  progress_history: [],
+  confusion_data: [],
+  topic_difficulty: [],
+  activity_overview: {
+    last_login: [],
+    quiz_attempts: 0,
+    material_downloads: 0,
+  },
+};
 
 const StudentMonitoring = () => {
-  const averageScore = Math.round(
-    studentPerformance.reduce((sum, student) => sum + student.score, 0) /
-      studentPerformance.length
-  );
+  const { tutorId } = useTutorAuth();
+  const [monitoring, setMonitoring] = useState(emptyMonitoring);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!tutorId) {
+      setLoading(false);
+      setError("Tutor session not found.");
+      return;
+    }
+
+    let active = true;
+
+    const loadMonitoring = async () => {
+      setLoading(true);
+      setError("");
+
+      const response = await getStudentMonitoring(tutorId);
+      if (!active) return;
+
+      if (response.success) {
+        setMonitoring(response.monitoring || emptyMonitoring);
+      } else {
+        setMonitoring(emptyMonitoring);
+        setError(response.message || "Failed to load student monitoring data.");
+      }
+
+      setLoading(false);
+    };
+
+    loadMonitoring();
+
+    return () => {
+      active = false;
+    };
+  }, [tutorId]);
+
+  const summary = monitoring.summary || emptyMonitoring.summary;
+  const studentPerformance = monitoring.student_performance || [];
+  const weakStudents = monitoring.weak_students || [];
+  const averageStudents = monitoring.average_students || [];
+  const highPerformers = monitoring.high_performers || [];
+  const confusionData = monitoring.confusion_data || [];
+  const topicDifficulty = monitoring.topic_difficulty || [];
+  const attendanceData = monitoring.attendance_data || [];
+  const progressHistory = monitoring.progress_history || [];
+
+  const averageScore = useMemo(() => summary.average_quiz_score || 0, [summary.average_quiz_score]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.18),transparent_30%),linear-gradient(135deg,#03111f,#020617)] text-white px-6 py-7">
+        <div className="rounded-3xl border border-cyan-300/50 bg-[#041225]/80 p-8 shadow-[0_0_25px_rgba(34,211,238,0.35)]">
+          <p className="text-sm uppercase tracking-[0.3em] text-cyan-300/70">Student Monitoring</p>
+          <h1 className="mt-3 text-3xl font-bold">Loading monitoring data...</h1>
+          <p className="mt-2 text-slate-300">Fetching quiz and attendance analytics from the backend.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.18),transparent_30%),linear-gradient(135deg,#03111f,#020617)] text-white px-6 py-7">
+      {error ? (
+        <div className="mb-6 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-amber-100">
+          {error}
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-sm uppercase tracking-[0.3em] text-cyan-300/70">
@@ -71,11 +127,11 @@ const StudentMonitoring = () => {
           </div>
           <div className="rounded-3xl border border-cyan-400/20 bg-[#041225]/80 p-5 shadow-[0_0_25px_rgba(34,211,238,0.25)]">
             <p className="text-sm text-slate-400">Weak Students</p>
-            <p className="mt-2 text-3xl font-semibold text-amber-300">{weakStudents.length}</p>
+            <p className="mt-2 text-3xl font-semibold text-amber-300">{summary.weak_students}</p>
           </div>
           <div className="rounded-3xl border border-cyan-400/20 bg-[#041225]/80 p-5 shadow-[0_0_25px_rgba(34,211,238,0.25)]">
             <p className="text-sm text-slate-400">Attendance Risk</p>
-            <p className="mt-2 text-3xl font-semibold text-emerald-300">{attendanceData.filter((item) => item.attendance < 75).length}</p>
+            <p className="mt-2 text-3xl font-semibold text-emerald-300">{summary.attendance_risk}</p>
           </div>
         </div>
       </div>
@@ -93,13 +149,13 @@ const StudentMonitoring = () => {
 
             <div className="grid gap-3">
               {studentPerformance.map((student) => (
-                <div key={student.name} className="flex items-center justify-between rounded-2xl bg-slate-900/70 px-4 py-4 border border-slate-700">
+                <div key={student.student_id} className="flex items-center justify-between rounded-2xl bg-slate-900/70 px-4 py-4 border border-slate-700">
                   <div>
                     <p className="text-sm text-slate-400">{student.name}</p>
-                    <p className="mt-1 text-lg font-semibold">{student.score}%</p>
+                    <p className="mt-1 text-lg font-semibold">{student.quiz_average}%</p>
                   </div>
                   <div className="rounded-full bg-cyan-500/10 px-3 py-1 text-cyan-200 text-sm">
-                    {student.score >= 75 ? "High" : student.score >= 50 ? "Average" : "Low"}
+                    {student.category === "high" ? "High" : student.category === "average" ? "Average" : "Low"}
                   </div>
                 </div>
               ))}
@@ -119,24 +175,24 @@ const StudentMonitoring = () => {
               <div className="rounded-3xl bg-slate-900/70 p-4 border border-slate-700">
                 <p className="text-sm text-slate-400">At Risk</p>
                 <ul className="mt-3 space-y-2 text-white">
-                  {weakStudents.map((name) => (
-                    <li key={name}>• {name}</li>
+                  {weakStudents.map((student) => (
+                    <li key={student.student_id}>• {student.name}</li>
                   ))}
                 </ul>
               </div>
               <div className="rounded-3xl bg-slate-900/70 p-4 border border-slate-700">
                 <p className="text-sm text-slate-400">Average</p>
                 <ul className="mt-3 space-y-2 text-white">
-                  {averageStudents.map((name) => (
-                    <li key={name}>• {name}</li>
+                  {averageStudents.map((student) => (
+                    <li key={student.student_id}>• {student.name}</li>
                   ))}
                 </ul>
               </div>
               <div className="rounded-3xl bg-slate-900/70 p-4 border border-slate-700">
                 <p className="text-sm text-slate-400">High Performers</p>
                 <ul className="mt-3 space-y-2 text-white">
-                  {highPerformers.map((name) => (
-                    <li key={name}>• {name}</li>
+                  {highPerformers.map((student) => (
+                    <li key={student.student_id}>• {student.name}</li>
                   ))}
                 </ul>
               </div>
@@ -154,8 +210,11 @@ const StudentMonitoring = () => {
 
             <div className="space-y-4">
               {progressHistory.map((item) => (
-                <div key={item.quiz} className="rounded-2xl bg-slate-900/70 px-4 py-4 border border-slate-700 flex items-center justify-between">
-                  <p>{item.quiz}</p>
+                <div key={`${item.quiz}-${item.attempted_at || item.student_name}`} className="rounded-2xl bg-slate-900/70 px-4 py-4 border border-slate-700 flex items-center justify-between gap-3">
+                  <div>
+                    <p>{item.quiz}</p>
+                    <p className="text-sm text-slate-400">{item.student_name}</p>
+                  </div>
                   <p className="font-semibold text-white">{item.score}%</p>
                 </div>
               ))}
@@ -207,7 +266,7 @@ const StudentMonitoring = () => {
 
             <div className="space-y-3">
               {attendanceData.map((item) => (
-                <div key={item.name} className="rounded-2xl bg-slate-900/70 p-4 border border-slate-700 flex items-center justify-between">
+                <div key={item.student_id} className="rounded-2xl bg-slate-900/70 p-4 border border-slate-700 flex items-center justify-between">
                   <p>{item.name}</p>
                   <p className={item.attendance < 60 ? "text-rose-400" : "text-emerald-300"}>{item.attendance}%</p>
                 </div>
@@ -253,16 +312,21 @@ const StudentMonitoring = () => {
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-2xl bg-slate-900/70 p-4 border border-slate-700">
             <p className="text-sm text-slate-400">Last Login</p>
-            <p className="mt-3 text-white">Kasuni — Today</p>
-            <p className="text-slate-400">Nadeesha — 10 days ago</p>
+            {monitoring.activity_overview.last_login.length > 0 ? (
+              monitoring.activity_overview.last_login.map((entry) => (
+                <p key={entry} className="mt-3 text-white">{entry}</p>
+              ))
+            ) : (
+              <p className="mt-3 text-slate-400">No recent activity</p>
+            )}
           </div>
           <div className="rounded-2xl bg-slate-900/70 p-4 border border-slate-700">
             <p className="text-sm text-slate-400">Quiz Attempts</p>
-            <p className="mt-3 text-white">132 total</p>
+            <p className="mt-3 text-white">{monitoring.activity_overview.quiz_attempts} total</p>
           </div>
           <div className="rounded-2xl bg-slate-900/70 p-4 border border-slate-700">
             <p className="text-sm text-slate-400">Material Downloads</p>
-            <p className="mt-3 text-white">48</p>
+            <p className="mt-3 text-white">{monitoring.activity_overview.material_downloads}</p>
           </div>
         </div>
       </div>

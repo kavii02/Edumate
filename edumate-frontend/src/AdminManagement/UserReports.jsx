@@ -6,26 +6,26 @@ const API_BASE_URL = 'http://localhost:5000'
 
 const REASON_CLASSES = {
   'Offensive Content': 'reason-offensive',
-  'Explicit Content':  'reason-explicit',
-  'Impersonation':     'reason-impersonation',
-  'Spam':              'reason-spam',
-  'Hate Speech':       'reason-hate',
-  'Fake Profile':      'reason-impersonation',
+  'Explicit Content': 'reason-explicit',
+  'Impersonation': 'reason-impersonation',
+  'Spam': 'reason-spam',
+  'Hate Speech': 'reason-hate',
+  'Fake Profile': 'reason-impersonation',
 }
 
 export default function UserReports() {
-  const [reports, setReports]         = useState([])
-  const [loading, setLoading]         = useState(true)
-  const [search, setSearch]           = useState('')
+  const [reports, setReports] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
-  const [showReport, setShowReport]   = useState(false)
+  const [showReport, setShowReport] = useState(false)
 
   useEffect(() => { fetchReports() }, [])
 
   const fetchReports = async () => {
     try {
       setLoading(true)
-      const res  = await fetch(`${API_BASE_URL}/api/admin/user-reports`)
+      const res = await fetch(`${API_BASE_URL}/api/admin/user-reports`)
       const data = await res.json()
       if (res.ok) setReports(data)
     } catch (err) {
@@ -55,19 +55,19 @@ export default function UserReports() {
     const headers = ['ID', 'Reported By', 'Reported User', 'Reason', 'Content Type', 'Content', 'Status', 'Report Date']
     const rows = filtered.map(r => [
       r.id,
-      `"${(r.reported_by_name  || '').replace(/"/g, '""')}"`,
+      `"${(r.reported_by_name || '').replace(/"/g, '""')}"`,
       `"${(r.reported_user_name || '').replace(/"/g, '""')}"`,
-      `"${(r.reason  || '').replace(/"/g, '""')}"`,
+      `"${(r.reason || '').replace(/"/g, '""')}"`,
       `"${(r.content_type || '').replace(/"/g, '""')}"`,
       `"${(r.content || '').replace(/"/g, '""')}"`,
       r.status,
       `"${formatDate(r.report_date)}"`
     ])
-    const csv  = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url  = URL.createObjectURL(blob)
+    const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
-    link.href     = url
+    link.href = url
     link.download = `user_reports_${new Date().toISOString().slice(0, 10)}.csv`
     link.click()
     URL.revokeObjectURL(url)
@@ -85,7 +85,7 @@ export default function UserReports() {
     })
   }, [reports, search, statusFilter])
 
-  const pendingCount  = reports.filter(r => r.status === 'Pending').length
+  const pendingCount = reports.filter(r => r.status === 'Pending').length
   const resolvedCount = reports.filter(r => r.status === 'Resolved').length
 
   const formatDate = (d) => {
@@ -120,7 +120,7 @@ export default function UserReports() {
         </div>
 
         <h3 className="rs-section-title">Breakdown by Reason</h3>
-        {['Offensive Content','Explicit Content','Impersonation','Spam','Hate Speech','Fake Profile'].map(reason => {
+        {['Offensive Content', 'Explicit Content', 'Impersonation', 'Spam', 'Hate Speech', 'Fake Profile'].map(reason => {
           const count = reports.filter(r => r.reason === reason).length
           if (!count) return null
           return (

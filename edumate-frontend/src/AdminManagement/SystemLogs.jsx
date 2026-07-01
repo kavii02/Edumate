@@ -5,9 +5,9 @@ const API_BASE_URL = 'http://localhost:5000'
 
 const LEVEL_CONFIG = {
   CRITICAL: { color: '#ff3333', bg: 'rgba(255,51,51,0.15)', border: 'rgba(255,51,51,0.3)', icon: <AlertTriangle size={14} /> },
-  ERROR:    { color: '#f97316', bg: 'rgba(249,115,22,0.15)', border: 'rgba(249,115,22,0.3)', icon: <AlertCircle size={14} /> },
-  WARNING:  { color: '#facc15', bg: 'rgba(250,204,21,0.15)', border: 'rgba(250,204,21,0.3)', icon: <AlertCircle size={14} /> },
-  INFO:     { color: '#38bdf8', bg: 'rgba(56,189,248,0.15)', border: 'rgba(56,189,248,0.3)', icon: <Info size={14} /> },
+  ERROR: { color: '#f97316', bg: 'rgba(249,115,22,0.15)', border: 'rgba(249,115,22,0.3)', icon: <AlertCircle size={14} /> },
+  WARNING: { color: '#facc15', bg: 'rgba(250,204,21,0.15)', border: 'rgba(250,204,21,0.3)', icon: <AlertCircle size={14} /> },
+  INFO: { color: '#38bdf8', bg: 'rgba(56,189,248,0.15)', border: 'rgba(56,189,248,0.3)', icon: <Info size={14} /> },
 }
 
 const LEVELS = ['ALL', 'CRITICAL', 'ERROR', 'WARNING', 'INFO']
@@ -42,7 +42,7 @@ export default function SystemLogs() {
 
   const filtered = useMemo(() => {
     return logs.filter(log => {
-      const matchLevel  = levelFilter  === 'ALL' || log.level  === levelFilter
+      const matchLevel = levelFilter === 'ALL' || log.level === levelFilter
       const matchModule = moduleFilter === 'ALL' || log.module === moduleFilter
       const q = search.toLowerCase()
       const matchSearch = !q || [log.user, log.action, log.module, log.ip, log.timestamp]
@@ -53,9 +53,9 @@ export default function SystemLogs() {
 
   const counts = useMemo(() => ({
     CRITICAL: logs.filter(l => l.level === 'CRITICAL').length,
-    ERROR:    logs.filter(l => l.level === 'ERROR').length,
-    WARNING:  logs.filter(l => l.level === 'WARNING').length,
-    INFO:     logs.filter(l => l.level === 'INFO').length,
+    ERROR: logs.filter(l => l.level === 'ERROR').length,
+    WARNING: logs.filter(l => l.level === 'WARNING').length,
+    INFO: logs.filter(l => l.level === 'INFO').length,
   }), [logs])
 
   return (

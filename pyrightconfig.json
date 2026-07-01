@@ -1,0 +1,7 @@
+{
+  "venvPath": "edumate-backend",
+  "venv": ".venv",
+  "extraPaths": [
+    "./edumate-backend"
+  ]
+}

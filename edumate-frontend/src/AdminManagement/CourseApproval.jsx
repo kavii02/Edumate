@@ -62,9 +62,9 @@ export default function CourseApproval() {
         prevCourses.map((course) =>
           course.id === courseId
             ? {
-                ...course,
-                status: action === 'approve' ? 'Approved' : 'Rejected'
-              }
+              ...course,
+              status: action === 'approve' ? 'Approved' : 'Rejected'
+            }
             : course
         )
       )
@@ -72,9 +72,9 @@ export default function CourseApproval() {
       setSelectedCourse((prev) =>
         prev
           ? {
-              ...prev,
-              status: action === 'approve' ? 'Approved' : 'Rejected'
-            }
+            ...prev,
+            status: action === 'approve' ? 'Approved' : 'Rejected'
+          }
           : null
       )
     } catch (error) {

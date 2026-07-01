@@ -1,14 +1,17 @@
 import '../index.css'
-import { useEffect, useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   LayoutGrid,
   Users,
   BookOpen,
+  Edit3,
   FileText,
   Settings,
+  Search,
   Bell,
   Mail,
   ChevronDown,
+  TrendingUp,
   UserCheck,
   Activity,
   ChevronRight
@@ -19,9 +22,6 @@ import CourseApproval from './CourseApproval'
 import SystemMonitoring from './SystemMonitoring'
 import UserReports from './UserReports'
 import SystemLogs from './SystemLogs'
-import AccountSettings from './AccountSettings'
-
-const API_BASE_URL = 'http://localhost:5000'
 
 const navItems = [
   { name: 'Dashboard', icon: <LayoutGrid size={18} /> },
@@ -35,49 +35,9 @@ const navItems = [
 
 export default function AdminDashboard({ onLogout }) {
   const [activeTab, setActiveTab] = useState('Dashboard')
-
-  const [summary, setSummary] = useState({
-    total_students: 0,
-    total_tutors: 0,
-    total_courses: 0,
-    pending_skill_requests: 0,
-    pending_reports: 0
-  })
-
-  const [logs, setLogs] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [selectedCourse, setSelectedCourse] = useState(null)
 
   const pageTitle = activeTab === 'User Management' ? '' : activeTab
-
-  useEffect(() => {
-    fetchDashboardData()
-  }, [])
-
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true)
-
-      const summaryResponse = await fetch(`${API_BASE_URL}/api/admin/dashboard-summary`)
-      const summaryData = await summaryResponse.json()
-
-      if (summaryResponse.ok) {
-        setSummary(summaryData)
-      }
-
-      const logsResponse = await fetch(`${API_BASE_URL}/api/admin/system-logs`)
-      const logsData = await logsResponse.json()
-
-      if (logsResponse.ok) {
-        setLogs(logsData.slice(0, 5))
-      }
-    } catch (error) {
-      console.error('Admin dashboard loading error:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const totalUsers = summary.total_students + summary.total_tutors
 
   return (
     <div className="admin-dashboard-shell">
@@ -92,6 +52,7 @@ export default function AdminDashboard({ onLogout }) {
           </div>
         </div>
 
+        {/* SIDEBAR NAV */}
         <nav className="sidebar-nav">
           {navItems.map((item) => (
             <button
@@ -108,6 +69,21 @@ export default function AdminDashboard({ onLogout }) {
             </button>
           ))}
         </nav>
+
+        {/* SIDEBAR LOGOUT BUTTON */}
+        {/* <button
+          className="sidebar-nav-item"
+          style={{
+            marginTop: 'auto',
+            background: 'rgba(248, 113, 113, 0.12)',
+            borderColor: 'rgba(248, 113, 113, 0.3)',
+            color: '#fda4af'
+          }}
+          onClick={onLogout}
+        >
+          <span className="nav-icon">⎋</span>
+          Logout
+        </button> */}
       </aside>
 
       <main className="admin-main-panel">
@@ -118,26 +94,24 @@ export default function AdminDashboard({ onLogout }) {
           </div>
 
           <div className="header-actions">
-            <button className="icon-pill" type="button">
+            <button className="icon-pill">
               <Bell size={16} />
             </button>
-
-            <button className="icon-pill" type="button">
+            <button className="icon-pill">
               <Mail size={16} />
             </button>
-
             <button className="profile-pill" type="button">
               <UserCheck size={16} />
               Admin
               <ChevronDown size={16} />
             </button>
-
             <button className="logout-pill" type="button" onClick={onLogout}>
               Log Out
             </button>
           </div>
         </header>
 
+        {/* PAGE ROUTING */}
         {activeTab === 'User Management' ? (
           <UserManagement />
         ) : activeTab === 'Course Approval' ? (
@@ -148,8 +122,6 @@ export default function AdminDashboard({ onLogout }) {
           <SystemMonitoring />
         ) : activeTab === 'System Logs' ? (
           <SystemLogs />
-        ) : activeTab === 'Account Settings' ? (
-          <AccountSettings />
         ) : activeTab === 'Dashboard' ? (
           <>
             <section className="dashboard-grid">
@@ -158,9 +130,7 @@ export default function AdminDashboard({ onLogout }) {
                   <Users size={24} />
                 </div>
                 <h2>TOTAL USERS</h2>
-                <p className="card-value">
-                  {loading ? '...' : totalUsers}
-                </p>
+                <p className="card-value">14,500</p>
               </div>
 
               <div className="dashboard-card neon-card-purple">
@@ -168,9 +138,7 @@ export default function AdminDashboard({ onLogout }) {
                   <BookOpen size={24} />
                 </div>
                 <h2>TOTAL COURSES</h2>
-                <p className="card-value">
-                  {loading ? '...' : summary.total_courses}
-                </p>
+                <p className="card-value">325</p>
               </div>
 
               <div className="dashboard-card neon-card-purple">
@@ -178,9 +146,7 @@ export default function AdminDashboard({ onLogout }) {
                   <Activity size={24} />
                 </div>
                 <h2>PENDING SKILL REQUESTS</h2>
-                <p className="card-value">
-                  {loading ? '...' : summary.pending_skill_requests}
-                </p>
+                <p className="card-value">72</p>
               </div>
 
               <div className="dashboard-card neon-card-purple">
@@ -188,16 +154,13 @@ export default function AdminDashboard({ onLogout }) {
                   <UserCheck size={24} />
                 </div>
                 <h2>ACTIVE TUTORS</h2>
-                <p className="card-value">
-                  {loading ? '...' : summary.total_tutors}
-                </p>
+                <p className="card-value">150</p>
               </div>
             </section>
 
             <section className="system-alerts-section">
               <div className="alerts-card neon-card-purple">
                 <h2>System Alerts (Logs)</h2>
-
                 <div className="table-wrapper">
                   <table className="alerts-table">
                     <thead>
@@ -208,28 +171,37 @@ export default function AdminDashboard({ onLogout }) {
                         <th>Action</th>
                       </tr>
                     </thead>
-
                     <tbody>
-                      {logs.length === 0 ? (
-                        <tr>
-                          <td colSpan="4" className="empty-state">
-                            No system logs found.
-                          </td>
-                        </tr>
-                      ) : (
-                        logs.map((log) => (
-                          <tr key={log.id}>
-                            <td>{log.timestamp}</td>
-                            <td>
-                              <span className={`alert-level ${String(log.level).toLowerCase()}`}>
-                                {log.level}
-                              </span>
-                            </td>
-                            <td>{log.user}</td>
-                            <td>{log.action}</td>
-                          </tr>
-                        ))
-                      )}
+                      <tr>
+                        <td>12:05 PM</td>
+                        <td><span className="alert-level critical">CRITICAL</span></td>
+                        <td>Tutor_A</td>
+                        <td>DB connection failed</td>
+                      </tr>
+                      <tr>
+                        <td>11:58 AM</td>
+                        <td><span className="alert-level info">INFO</span></td>
+                        <td>Admin_B</td>
+                        <td>User created</td>
+                      </tr>
+                      <tr>
+                        <td>12:05 AM</td>
+                        <td><span className="alert-level critical">CRITICAL</span></td>
+                        <td>Admin_A</td>
+                        <td>DB connection failed</td>
+                      </tr>
+                      <tr>
+                        <td>11:58 AM</td>
+                        <td><span className="alert-level info">INFO</span></td>
+                        <td>Admin_B</td>
+                        <td>User created</td>
+                      </tr>
+                      <tr>
+                        <td>11:50 AM</td>
+                        <td><span className="alert-level critical">CRITICAL</span></td>
+                        <td>Main_A</td>
+                        <td>DB connection failed</td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>

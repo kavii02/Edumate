@@ -376,7 +376,7 @@ export default function StudentDashboard({ onLogout, student, token }) {
           })))
         }
       })
-      .catch(() => {})
+      .catch(() => { })
   }, [])
 
   const leaderboardRank = leaderboardEntries.find((e) => e.indexNo === `ID-${student?.student_id}`)?.rank ?? '-'

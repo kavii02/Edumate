@@ -1,5 +1,5 @@
 from flask import Blueprint
-from ..student.services.peer_matching_service import generate_recommendations
+from ..services.peer_matching_service import generate_recommendations
 
 recommendation_bp = Blueprint(
     "recommendations",

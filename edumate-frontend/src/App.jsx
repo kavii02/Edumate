@@ -40,9 +40,9 @@ export default function App() {
     const storedLoggedIn = localStorage.getItem('edumate_loggedIn') === 'true'
     const storedRole = localStorage.getItem('edumate_role')
 
-    if (storedLoggedIn && storedRole === 'Admin') {
+    if (storedLoggedIn && storedRole) {
       setLoggedIn(true)
-      setRole('Admin')
+      setRole(storedRole)
     }
   }, [])
 
@@ -164,6 +164,7 @@ export default function App() {
         localStorage.setItem('edumate_student_obj', JSON.stringify(studentObj))
         localStorage.setItem('edumate_student_token', studentToken)
         localStorage.setItem('edumate_role', 'Student')
+        localStorage.setItem('edumate_loggedIn', 'true')
         setStudent(studentObj)
         setToken(studentToken)
         setLoggedIn(true)
@@ -190,6 +191,8 @@ export default function App() {
         localStorage.setItem('edumate_tutor_id', String(data.tutor.id))
         localStorage.setItem('edumate_tutor_name', data.tutor.name)
         localStorage.setItem('edumate_role', 'Tutor')
+        localStorage.setItem('edumate_loggedIn', 'true')
+        localStorage.setItem('tutorSession', JSON.stringify(data.tutor))
         setLoggedIn(true)
         setError('')
         return
@@ -306,7 +309,7 @@ export default function App() {
     return (
       <Router>
         <Routes>
-          <Route path="/tutor/*" element={<TutorMain />} />
+          <Route path="/tutor/*" element={<TutorMain onLogout={handleLogout} />} />
           <Route path="*" element={<Navigate to="/tutor" replace />} />
         </Routes>
       </Router>
@@ -373,7 +376,7 @@ export default function App() {
         <>
           {!role && !loggedIn && <RoleSelection onChooseRole={chooseRole} />}
 
-              {!verificationPending && role && !loggedIn && !showRegistration && (
+          {!verificationPending && role && !loggedIn && !showRegistration && (
             <LoginForm
               role={role}
               email={email}
