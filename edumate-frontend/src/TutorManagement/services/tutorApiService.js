@@ -347,3 +347,39 @@ export const generateQuizFromPdf = async (pdfFile, numberOfQuestions, difficulty
     return { success: false, message: "Failed to generate quiz from PDF" };
   }
 };
+
+export const getTutorAnalytics = async (tutorId) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/analytics/${tutorId}`, {
+      method: "GET",
+    });
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching tutor analytics:", error);
+    return { success: false, message: "Failed to fetch tutor analytics" };
+  }
+};
+
+export const predictStudentPerformance = async (tutorId) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/analytics/predict-performance/${tutorId}`, {
+      method: "GET",
+    });
+    return await response.json();
+  } catch (error) {
+    console.error("Error predicting student performance:", error);
+    return { success: false, message: "Failed to predict performance" };
+  }
+};
+
+export const getTutorAttendance = async (tutorId) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/attendance/${tutorId}`, {
+      method: "GET",
+    });
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching tutor attendance:", error);
+    return { success: false, message: "Failed to fetch tutor attendance" };
+  }
+};

@@ -12,6 +12,8 @@ import NotificationSettings from "./pages/NotificationSettings";
 import Availability from "./pages/Availability";
 import HelpSupport from "./pages/HelpSupport";
 import ProfileEdit from "./pages/ProfileEdit";
+import Analytics from "./pages/Analytics";
+import Attendance from "./pages/Attendance";
 import { TutorAuthProvider } from "./context/TutorAuthContext";
 
 const Placeholder = ({ title }) => (
@@ -43,8 +45,8 @@ const TutorMain = ({ onLogout }) => {
               <Route path="help" element={<HelpSupport />} />
               <Route path="create-quiz" element={<CreateQuiz />} />
               <Route path="student-monitoring" element={<StudentMonitoring />} />
-              <Route path="analytics" element={<Placeholder title="Analytics" />} />
-              <Route path="attendance" element={<Placeholder title="Attendance" />} />
+              <Route path="analytics" element={<Analytics />} />
+              <Route path="attendance" element={<Attendance />} />
               <Route path="*" element={<Navigate to="." replace />} />
             </Routes>
           </div>
