@@ -82,6 +82,7 @@ def create_app():
     from .routes.skill_message_route import skill_message_bp
     from .routes.admin_routes import admin_bp
     from .routes.student_routes import student_bp
+    from .routes.tutor_routes import tutor_bp
     from .routes.course_routes import course_bp
     from .routes.quiz_routes import quiz_bp
     from .routes.study_planner_routes import planner_bp
@@ -95,7 +96,10 @@ def create_app():
     app.register_blueprint(skill_message_bp, url_prefix="/api/skillmessages")
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
     app.register_blueprint(student_bp, url_prefix="/api/student")
-    app.register_blueprint(course_bp, url_prefix="/api/course")
+    app.register_blueprint(tutor_bp, url_prefix="/api/tutor")
+    app.register_blueprint(course_bp, url_prefix="/api/course", name="course_main")
+    app.register_blueprint(course_bp, url_prefix="/api/courses", name="course_plural")
+    app.register_blueprint(course_bp, url_prefix="/api/tutor/courses", name="course_tutor")
     app.register_blueprint(quiz_bp, url_prefix="/api/quiz")
     app.register_blueprint(planner_bp, url_prefix="/api/planner")
     app.register_blueprint(attendance_bp, url_prefix="/api/attendance")

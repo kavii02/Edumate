@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 
+import { saveTutorSession } from './services/authApiService'
 import AdminDashboard from './AdminManagement/AdminDashboard'
 import StudentDashboard from './StudentManagement/StudentDashboard'
 import TutorMain from './TutorManagement/TutorMain'
@@ -40,9 +41,9 @@ export default function App() {
     const storedLoggedIn = localStorage.getItem('edumate_loggedIn') === 'true'
     const storedRole = localStorage.getItem('edumate_role')
 
-    if (storedLoggedIn && storedRole === 'Admin') {
+    if (storedLoggedIn && storedRole) {
       setLoggedIn(true)
-      setRole('Admin')
+      setRole(storedRole)
     }
   }, [])
 
@@ -190,6 +191,8 @@ export default function App() {
         localStorage.setItem('edumate_tutor_id', String(data.tutor.id))
         localStorage.setItem('edumate_tutor_name', data.tutor.name)
         localStorage.setItem('edumate_role', 'Tutor')
+        localStorage.setItem('edumate_loggedIn', 'true')
+        saveTutorSession({ tutor_id: data.tutor.id, name: data.tutor.name, email: username })
         setLoggedIn(true)
         setError('')
         return
@@ -298,6 +301,9 @@ export default function App() {
     localStorage.removeItem('edumate_student_token')
     localStorage.removeItem('edumate_student_id')
     localStorage.removeItem('edumate_student_name')
+    localStorage.removeItem('edumate_tutor_id')
+    localStorage.removeItem('edumate_tutor_name')
+    localStorage.removeItem('tutorSession')
     setStudent(null)
     setToken(null)
   }
@@ -306,7 +312,7 @@ export default function App() {
     return (
       <Router>
         <Routes>
-          <Route path="/tutor/*" element={<TutorMain />} />
+          <Route path="/tutor/*" element={<TutorMain onLogout={handleLogout} />} />
           <Route path="*" element={<Navigate to="/tutor" replace />} />
         </Routes>
       </Router>

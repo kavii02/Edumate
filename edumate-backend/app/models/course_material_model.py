@@ -14,7 +14,7 @@ class CourseMaterial(db.Model):
     uploaded_by = db.Column(db.Integer, db.ForeignKey('tutors.tutor_id'), nullable=True)
     created_at = db.Column(db.DateTime, default=db.func.now())
 
-    course = db.relationship('Course', backref=db.backref('materials', lazy=True))
+    course = db.relationship('Course', back_populates='materials')
 
     def to_dict(self):
         return {

@@ -12,6 +12,7 @@ class Quiz(db.Model):
     status = db.Column(db.Enum('Active', 'Inactive'), nullable=True)
 
     questions = db.relationship('QuizQuestion', backref='quiz', lazy=True, cascade='all, delete-orphan')
+    tutor_questions = db.relationship('Question', back_populates='quiz', lazy=True, cascade='all, delete-orphan')
     results = db.relationship('QuizResult', backref='quiz', lazy=True, cascade='all, delete-orphan')
 
     @property
@@ -67,7 +68,7 @@ class QuizQuestion(db.Model):
             "option2": self.option2,
             "option3": self.option3,
             "option4": self.option4,
-            "correct_answer": self.correct_answer
+            "correct_answer": self.correct_answer,
         }
 
     def to_dict_hide_answer(self):
@@ -78,8 +79,57 @@ class QuizQuestion(db.Model):
             "option1": self.option1,
             "option2": self.option2,
             "option3": self.option3,
-            "option4": self.option4
+            "option4": self.option4,
         }
 
     def __repr__(self):
         return f"<QuizQuestion {self.question_id}>"
+
+
+class Question(db.Model):
+    __tablename__ = "questions"
+
+    question_id = db.Column(db.Integer, primary_key=True)
+    quiz_id = db.Column(db.Integer, db.ForeignKey('quizzes.quiz_id'), nullable=False)
+    question_text = db.Column(db.Text, nullable=False)
+    option_a = db.Column(db.String(255), nullable=True)
+    option_b = db.Column(db.String(255), nullable=True)
+    option_c = db.Column(db.String(255), nullable=True)
+    option_d = db.Column(db.String(255), nullable=True)
+    correct_answer = db.Column(db.String(1), nullable=True)
+
+    quiz = db.relationship('Quiz', back_populates='tutor_questions')
+
+    @property
+    def question_type(self):
+        return "mcq"
+
+    @property
+    def marks(self):
+        return 1
+
+    @property
+    def order(self):
+        return self.question_id or 0
+
+    def to_dict(self):
+        return {
+            "question_id": self.question_id,
+            "quiz_id": self.quiz_id,
+            "question_text": self.question_text,
+            "option_a": self.option_a,
+            "option_b": self.option_b,
+            "option_c": self.option_c,
+            "option_d": self.option_d,
+            "correct_answer": self.correct_answer,
+            "question_type": self.question_type,
+            "marks": self.marks,
+            "order": self.order,
+        }
+
+
+class QuizOwner(db.Model):
+    __tablename__ = "quiz_owners"
+
+    quiz_id = db.Column(db.Integer, db.ForeignKey("quizzes.quiz_id"), primary_key=True)
+    tutor_id = db.Column(db.Integer, db.ForeignKey("tutors.tutor_id"), nullable=False)
