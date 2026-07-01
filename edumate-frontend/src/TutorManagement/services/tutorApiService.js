@@ -215,6 +215,22 @@ export const publishQuiz = async (quizId) => {
   }
 };
 
+export const updateQuiz = async (quizId, quizData) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/quizzes/${quizId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(quizData),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error("Error updating quiz:", error);
+    return { success: false, message: "Failed to update quiz" };
+  }
+};
+
 // ==================== QUESTIONS ====================
 
 export const addQuestion = async (quizId, questionData) => {
@@ -290,5 +306,23 @@ export const deleteAvailability = async (availabilityId) => {
   } catch (error) {
     console.error("Error deleting availability:", error);
     return { success: false, message: "Failed to delete availability" };
+  }
+};
+
+export const generateQuizFromPdf = async (pdfFile, numberOfQuestions, difficulty) => {
+  try {
+    const formData = new FormData();
+    formData.append("file", pdfFile);
+    formData.append("number_of_questions", numberOfQuestions);
+    formData.append("difficulty", difficulty);
+
+    const response = await fetch("http://localhost:5000/api/quizzes/generate-from-pdf", {
+      method: "POST",
+      body: formData,
+    });
+    return await response.json();
+  } catch (error) {
+    console.error("Error generating quiz from PDF:", error);
+    return { success: false, message: "Failed to generate quiz from PDF" };
   }
 };

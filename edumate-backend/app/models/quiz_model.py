@@ -15,6 +15,9 @@ class Quiz(db.Model):
     tutor_questions = db.relationship('Question', back_populates='quiz', lazy=True, cascade='all, delete-orphan')
     results = db.relationship('QuizResult', backref='quiz', lazy=True, cascade='all, delete-orphan')
 
+    def __init__(self, **kwargs):
+        super(Quiz, self).__init__(**kwargs)
+
     @property
     def title(self):
         return self.quiz_title
@@ -81,6 +84,9 @@ class QuizQuestion(db.Model):
     correct_answer = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.now())
 
+    def __init__(self, **kwargs):
+        super(QuizQuestion, self).__init__(**kwargs)
+
     def to_dict(self):
         return {
             "question_id": self.question_id,
@@ -122,6 +128,9 @@ class Question(db.Model):
 
     quiz = db.relationship('Quiz', back_populates='tutor_questions')
 
+    def __init__(self, **kwargs):
+        super(Question, self).__init__(**kwargs)
+
     @property
     def question_type(self):
         return "mcq"
@@ -155,3 +164,6 @@ class QuizOwner(db.Model):
 
     quiz_id = db.Column(db.Integer, db.ForeignKey("quizzes.quiz_id"), primary_key=True)
     tutor_id = db.Column(db.Integer, db.ForeignKey("tutors.tutor_id"), nullable=False)
+
+    def __init__(self, **kwargs):
+        super(QuizOwner, self).__init__(**kwargs)

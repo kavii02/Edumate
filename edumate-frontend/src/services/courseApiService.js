@@ -66,6 +66,22 @@ export const updateCourse = async (courseId, courseData) => {
   }
 };
 
+export const uploadCourseCover = async (courseId, file) => {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(`${API_BASE_URL}/${courseId}/cover`, {
+      method: "POST",
+      body: formData,
+    });
+    return await response.json();
+  } catch (error) {
+    console.error("Error uploading course cover:", error);
+    return { success: false, message: "Failed to upload cover image" };
+  }
+};
+
 export const deleteCourse = async (courseId) => {
   try {
     const response = await fetch(`${API_BASE_URL}/${courseId}`, {

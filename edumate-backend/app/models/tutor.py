@@ -30,6 +30,11 @@ class Tutor(db.Model):
     email = db.Column(db.String(100), unique=True, nullable=True)
     password = db.Column(db.String(255), nullable=True)
     specialization = db.Column(db.String(100), nullable=True)
+    avatar_url = db.Column(db.String(500), nullable=True)
+    cover_url = db.Column(db.String(500), nullable=True)
+    phone = db.Column(db.String(20), nullable=True)
+    teaching_area = db.Column(db.String(200), nullable=True)
+    about = db.Column(db.Text, nullable=True)
 
     courses = db.relationship("Course", back_populates="tutor", cascade="all, delete-orphan")
     availability = db.relationship("Availability", back_populates="tutor", cascade="all, delete-orphan")
@@ -48,6 +53,11 @@ class Tutor(db.Model):
             "email": self.email,
             "qualification": self.specialization,
             "specialization": self.specialization,
+            "avatar_url": self.avatar_url,
+            "cover_url": self.cover_url,
+            "phone": self.phone,
+            "teaching_area": self.teaching_area,
+            "about": self.about,
         }
 
     def to_dict_public(self):

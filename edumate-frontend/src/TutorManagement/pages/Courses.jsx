@@ -6,6 +6,7 @@ import {
   deleteMaterial,
   updateCourse,
   getMaterialFileUrl,
+  uploadCourseCover,
 } from "../../services/courseApiService";
 import { useTutorAuth } from "../context/TutorAuthContext";
 
@@ -23,6 +24,8 @@ const Courses = () => {
   const [materialType, setMaterialType] = useState("pdf");
   const [selectedFile, setSelectedFile] = useState(null);
   const [editDescription, setEditDescription] = useState("");
+  const [editImageUrl, setEditImageUrl] = useState("");
+  const [editCoverFile, setEditCoverFile] = useState(null);
 
   const fetchCourses = async () => {
     if (!tutorId) return;
@@ -51,12 +54,14 @@ const Courses = () => {
     setMaterialTitle("");
     setMaterialType("pdf");
     setSelectedFile(null);
+    setEditCoverFile(null);
 
     const response = await getCourse(course.course_id);
 
     if (response.success) {
       setSelectedCourse(response.course);
       setEditDescription(response.course.description || "");
+      setEditImageUrl(response.course.image_url || "");
     } else {
       setModalMessage(response.message || "Failed to load course details");
       setSelectedCourse(null);
@@ -77,6 +82,7 @@ const Courses = () => {
     if (response.success) {
       setSelectedCourse(response.course);
       setEditDescription(response.course.description || "");
+      setEditImageUrl(response.course.image_url || "");
       await fetchCourses();
     }
   };
@@ -137,10 +143,22 @@ const Courses = () => {
     setModalLoading(true);
     const response = await updateCourse(selectedCourse.course_id, {
       description: editDescription,
+      image_url: editImageUrl,
     });
 
     if (response.success) {
-      setModalMessage("Course updated successfully.");
+      if (editCoverFile) {
+        setModalMessage("Saving description and uploading cover image...");
+        const coverResponse = await uploadCourseCover(selectedCourse.course_id, editCoverFile);
+        if (coverResponse.success) {
+          setModalMessage("Course details and cover image updated successfully.");
+          setEditCoverFile(null);
+        } else {
+          setModalMessage("Course details updated, but cover image upload failed: " + coverResponse.message);
+        }
+      } else {
+        setModalMessage("Course updated successfully.");
+      }
       await refreshSelectedCourse(selectedCourse.course_id);
     } else {
       setModalMessage(response.message || "Failed to update course.");
@@ -292,26 +310,62 @@ const Courses = () => {
                         className="min-h-[120px] w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-400"
                       />
                     </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-sm text-slate-400">
+                          Course Cover Image (URL)
+                        </label>
+                        <input
+                          type="text"
+                          value={editImageUrl}
+                          onChange={(e) => setEditImageUrl(e.target.value)}
+                          className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-400 disabled:opacity-50"
+                          placeholder="Paste cover image URL"
+                          disabled={!!editCoverFile}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm text-slate-400">
+                          Or Upload Cover Image File
+                        </label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            setEditCoverFile(e.target.files[0]);
+                            setEditImageUrl(""); // clear text URL if file is chosen
+                          }}
+                          className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white file:rounded-full file:border-0 file:bg-cyan-500 file:px-4 file:py-2 file:font-semibold file:text-slate-950 file:text-xs"
+                        />
+                        {editCoverFile && (
+                          <p className="mt-2 text-xs text-cyan-300">
+                            Selected: {editCoverFile.name} ({Math.round(editCoverFile.size / 1024)} KB)
+                          </p>
+                        )}
+                      </div>
+                    </div>
                     <button
                       type="button"
-                      onClick={handleSaveCourse}
                       disabled={modalLoading}
-                      className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-50"
+                      onClick={handleSaveCourse}
+                      className="rounded-2xl bg-cyan-500 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-50"
                     >
-                      Save Changes
+                      {modalLoading ? "Saving..." : "Save Changes"}
                     </button>
                   </div>
                 ) : (
-                  <>
+                  <div className="space-y-4">
+                    {selectedCourse.image_url && (
+                      <img
+                        src={selectedCourse.image_url}
+                        alt={selectedCourse.title}
+                        className="h-44 w-full rounded-2xl object-cover"
+                      />
+                    )}
                     <p className="text-slate-300 leading-7">
                       {selectedCourse.description || "No description provided."}
                     </p>
-                    <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-400">
-                      <span>{selectedCourse.lesson_count || 0} Lessons</span>
-                      <span>{selectedCourse.student_count || 0} Students</span>
-                      <span>Status: {selectedCourse.status || "Active"}</span>
-                    </div>
-                  </>
+                  </div>
                 )}
               </div>
 
@@ -431,13 +485,11 @@ const Courses = () => {
               key={course.course_id}
               className="rounded-3xl overflow-hidden border border-cyan-300/40 bg-[#041225]/90 shadow-[0_0_25px_rgba(34,211,238,0.35)]"
             >
-              {course.image_url && (
-                <img
-                  src={course.image_url}
-                  alt={course.title}
-                  className="h-44 w-full object-cover"
-                />
-              )}
+              <img
+                src={course.image_url || "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=800&auto=format&fit=crop&q=60"}
+                alt={course.title}
+                className="h-44 w-full object-cover"
+              />
 
               <div className="p-6">
                 <h2 className="text-2xl font-bold text-cyan-200">{course.title}</h2>

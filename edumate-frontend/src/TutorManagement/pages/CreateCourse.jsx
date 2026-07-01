@@ -1,11 +1,21 @@
 import { useState } from "react";
-import { createCourse, addMaterial } from "../../services/courseApiService";
+import { createCourse, addMaterial, uploadCourseCover } from "../../services/courseApiService";
 import { useTutorAuth } from "../context/TutorAuthContext";
+
+const PRESET_IMAGES = [
+  { name: "Coding", url: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&auto=format&fit=crop&q=60" },
+  { name: "Databases", url: "https://images.unsplash.com/photo-1544383835-bda2bc66a55d?w=800&auto=format&fit=crop&q=60" },
+  { name: "Networking", url: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&auto=format&fit=crop&q=60" },
+  { name: "AI & Tech", url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=60" },
+  { name: "Abstract", url: "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=800&auto=format&fit=crop&q=60" }
+];
 
 const CreateCourse = () => {
   const { tutorId } = useTutorAuth();
   const [courseName, setCourseName] = useState("");
   const [description, setDescription] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [coverFile, setCoverFile] = useState(null);
   const [materialTitle, setMaterialTitle] = useState("");
   const [materialType, setMaterialType] = useState("pdf");
   const [selectedFile, setSelectedFile] = useState(null);
@@ -37,13 +47,26 @@ const CreateCourse = () => {
       tutor_id: tutorId,
       title: courseName,
       description: description,
+      image_url: imageUrl || PRESET_IMAGES[4].url, // default to Abstract preset if empty
       category: "General",
       level: "Beginner",
     });
 
     if (response.success) {
-      setCourseId(response.course.course_id);
-      setMessage("Course created successfully! Now upload materials.");
+      const newCourseId = response.course.course_id;
+      setCourseId(newCourseId);
+      
+      if (coverFile) {
+        setMessage("Creating course and uploading cover image...");
+        const coverResponse = await uploadCourseCover(newCourseId, coverFile);
+        if (coverResponse.success) {
+          setMessage("Course created and cover image uploaded successfully! Now upload materials.");
+        } else {
+          setMessage("Course created, but cover image upload failed: " + coverResponse.message);
+        }
+      } else {
+        setMessage("Course created successfully! Now upload materials.");
+      }
     } else {
       setMessage("Failed to create course: " + response.message);
     }
@@ -149,6 +172,60 @@ const CreateCourse = () => {
                     disabled={loading || !!courseId}
                     className="w-full min-h-[140px] rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 disabled:opacity-50"
                   />
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-2">Course Cover Image (URL)</label>
+                    <input
+                      type="text"
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      placeholder="Paste cover URL or select preset"
+                      disabled={loading || !!courseId || !!coverFile}
+                      className="w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 disabled:opacity-50"
+                    />
+                    {!courseId && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {PRESET_IMAGES.map((img) => (
+                          <button
+                            key={img.name}
+                            type="button"
+                            onClick={() => {
+                              setImageUrl(img.url);
+                              setCoverFile(null);
+                            }}
+                            disabled={!!coverFile}
+                            className={`rounded-full px-3 py-1.5 text-xs font-semibold border transition ${
+                              imageUrl === img.url
+                                ? "bg-cyan-500 text-slate-950 border-cyan-400"
+                                : "border-slate-700 text-slate-300 hover:bg-slate-900"
+                            }`}
+                          >
+                            {img.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-2">Or Upload Cover Image File</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        setCoverFile(e.target.files[0]);
+                        setImageUrl(""); // clear text URL if file is chosen
+                      }}
+                      disabled={loading || !!courseId}
+                      className="w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-white file:rounded-full file:border-0 file:bg-cyan-500 file:px-4 file:py-2 file:font-semibold file:text-slate-950 file:text-xs disabled:opacity-50"
+                    />
+                    {coverFile && (
+                      <p className="mt-2 text-xs text-cyan-300">
+                        Selected: {coverFile.name} ({Math.round(coverFile.size / 1024)} KB)
+                      </p>
+                    )}
+                  </div>
                 </div>
                 {!courseId && (
                   <button

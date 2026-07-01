@@ -17,6 +17,9 @@ class CourseMaterial(db.Model):
 
     course = db.relationship('Course', backref=db.backref('materials', lazy=True))
 
+    def __init__(self, **kwargs):
+        super(CourseMaterial, self).__init__(**kwargs)
+
     @property
     def material_title(self):
         return self.title

@@ -87,7 +87,6 @@ def update_profile(tutor_id):
     
     data = request.get_json()
     
-    # Update allowed fields
     if "full_name" in data:
         parts = data["full_name"].strip().split(None, 1)
         tutor.first_name = parts[0] if parts else ""
@@ -96,6 +95,16 @@ def update_profile(tutor_id):
         tutor.specialization = data["qualification"]
     if "specialization" in data:
         tutor.specialization = data["specialization"]
+    if "phone" in data:
+        tutor.phone = data["phone"]
+    if "teaching_area" in data:
+        tutor.teaching_area = data["teaching_area"]
+    if "about" in data:
+        tutor.about = data["about"]
+    if "avatar_url" in data:
+        tutor.avatar_url = data["avatar_url"]
+    if "cover_url" in data:
+        tutor.cover_url = data["cover_url"]
     
     db.session.commit()
     
@@ -150,15 +159,7 @@ def get_dashboard(tutor_id):
     ).scalar() or 0
 
     total_students = db.session.execute(
-        text(
-            """
-            SELECT COUNT(DISTINCT e.student_id)
-            FROM enrollments e
-            INNER JOIN courses c ON c.course_id = e.course_id
-            WHERE c.tutor_id = :tutor_id
-            """
-        ),
-        {"tutor_id": tutor_id},
+        text("SELECT COUNT(*) FROM students")
     ).scalar() or 0
 
     total_quizzes = db.session.execute(
@@ -291,7 +292,7 @@ def get_quiz_details(quiz_id):
     
     quiz_data = quiz.to_dict()
     quiz_data["questions"] = [
-        {**question.to_dict(), "correct_answer": None}  # Don't expose answer to frontend
+        question.to_dict()
         for question in sorted(quiz.tutor_questions, key=lambda q: q.order)
     ]
     
@@ -320,6 +321,58 @@ def publish_quiz(quiz_id):
         "message": "Quiz published successfully",
         "quiz": quiz.to_dict()
     }), 200
+
+
+@tutor_bp.route("/quizzes/<int:quiz_id>", methods=["PUT"])
+def update_quiz(quiz_id):
+    """Update a quiz and its questions"""
+    quiz = Quiz.query.get(quiz_id)
+    if not quiz:
+        return jsonify({"success": False, "message": "Quiz not found"}), 404
+        
+    data = request.get_json() or {}
+    
+    # Update quiz fields
+    if "title" in data:
+        quiz.quiz_title = data["title"].strip()
+    if "difficulty_level" in data:
+        quiz.difficulty_level = data["difficulty_level"]
+    if "duration_minutes" in data:
+        quiz.duration_minutes = int(data["duration_minutes"])
+    if "status" in data:
+        quiz.status = data["status"]
+    elif "is_published" in data:
+        quiz.status = "Active" if data["is_published"] else "Inactive"
+        
+    # If questions list is provided, replace the questions
+    if "questions" in data:
+        questions_data = data["questions"]
+        if not isinstance(questions_data, list):
+            return jsonify({"success": False, "message": "Questions must be a list"}), 400
+            
+        # Delete existing questions
+        Question.query.filter_by(quiz_id=quiz.quiz_id).delete()
+        
+        # Insert new questions
+        for index, q_data in enumerate(questions_data):
+            try:
+                question = _build_question(q_data, index)
+                question.quiz_id = quiz.quiz_id
+                db.session.add(question)
+            except ValueError as error:
+                db.session.rollback()
+                return jsonify({"success": False, "message": str(error)}), 400
+                
+    try:
+        db.session.commit()
+        return jsonify({
+            "success": True,
+            "message": "Quiz updated successfully",
+            "quiz": quiz.to_dict()
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
 
 
 # ==================== QUESTIONS ====================

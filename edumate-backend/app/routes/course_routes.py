@@ -129,7 +129,9 @@ from datetime import datetime
 # pyrefly: ignore [missing-import]
 from .. import db
 # pyrefly: ignore [missing-import]
-from ..models import Course, CourseMaterial, Tutor, normalize_material_type
+from ..models import Course, CourseMaterial, Tutor, normalize_material_type, Quiz, Question, QuizOwner
+from ..services.pdf_service import extract_text_from_pdf
+from ..services.ai_quiz_service import generate_quiz_with_ai
 
 course_bp = Blueprint("course", __name__)
 
@@ -236,6 +238,7 @@ def create_course():
         tutor_id=tutor_id,
         course_title=title,
         description=description,
+        image_url=image_url,
     )
     
     db.session.add(course)
@@ -277,6 +280,9 @@ def update_course(course_id):
     
     if "description" in data:
         course.description = data["description"]
+
+    if "image_url" in data:
+        course.image_url = data["image_url"]
     
     db.session.commit()
     
@@ -285,6 +291,50 @@ def update_course(course_id):
         "message": "Course updated successfully",
         "course": course.to_dict()
     }), 200
+
+
+@course_bp.route("/<int:course_id>/cover", methods=["POST"])
+def upload_course_cover(course_id):
+    """Upload custom cover image for a course"""
+    course = Course.query.get(course_id)
+    if not course:
+        return jsonify({"success": False, "message": "Course not found"}), 404
+
+    if "file" not in request.files:
+        return jsonify({"success": False, "message": "No file uploaded"}), 400
+
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"success": False, "message": "No selected file"}), 400
+
+    allowed_image_extensions = {"png", "jpg", "jpeg", "webp", "gif"}
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    if ext not in allowed_image_extensions:
+        return jsonify({"success": False, "message": "Only image files (png, jpg, jpeg, webp, gif) are allowed"}), 400
+
+    try:
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_")
+        filename = "cover_" + timestamp + filename
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+
+        file.save(filepath)
+
+        file_url = f"http://localhost:5000/api/tutor/courses/files/{filename}"
+        course.image_url = file_url
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Cover image uploaded successfully",
+            "image_url": file_url,
+            "course": course.to_dict()
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
 
 
 @course_bp.route("/<int:course_id>", methods=["DELETE"])
@@ -387,6 +437,46 @@ def add_material(course_id):
     db.session.add(material)
     db.session.commit()
     
+    # Auto-generate quiz if material is a PDF
+    if material.material_type == "PDF":
+        try:
+            pdf_path = os.path.abspath(os.path.join(UPLOAD_FOLDER, filename))
+            if os.path.exists(pdf_path):
+                lesson_text = extract_text_from_pdf(pdf_path)
+                if lesson_text and len(lesson_text.strip()) >= 100:
+                    generated = generate_quiz_with_ai(lesson_text, number_of_questions=5)
+                    questions_data = generated.get("questions", [])
+                    if questions_data:
+                        quiz = Quiz(
+                            course_id=course_id,
+                            quiz_title=generated.get("title", f"AI Quiz - {title}"),
+                            difficulty_level="Medium",
+                            duration_minutes=15,
+                            status="Inactive"
+                        )
+                        db.session.add(quiz)
+                        db.session.flush()
+
+                        if course.tutor_id:
+                            db.session.add(QuizOwner(quiz_id=quiz.quiz_id, tutor_id=course.tutor_id))
+
+                        for q in questions_data:
+                            question = Question(
+                                quiz_id=quiz.quiz_id,
+                                question_text=q.get("question_text"),
+                                option_a=q.get("option_a"),
+                                option_b=q.get("option_b"),
+                                option_c=q.get("option_c"),
+                                option_d=q.get("option_d"),
+                                correct_answer=q.get("correct_answer")
+                            )
+                            db.session.add(question)
+                        
+                        db.session.commit()
+        except Exception as auto_err:
+            db.session.rollback()
+            print(f"Auto-quiz generation failed: {str(auto_err)}")
+
     return jsonify({
         "success": True,
         "message": "Material uploaded successfully",

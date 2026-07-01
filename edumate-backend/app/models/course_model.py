@@ -11,10 +11,14 @@ class Course(db.Model):
     created_at = db.Column(db.DateTime, default=db.func.now())
     status = db.Column(db.String(20), nullable=True, default='Pending')
     submitted_at = db.Column(db.DateTime, nullable=True)
+    image_url = db.Column(db.String(500), nullable=True)
 
     tutor = db.relationship('Tutor', back_populates='courses')
     enrollments = db.relationship('Enrollment', backref='course', lazy=True, cascade='all, delete-orphan')
     quizzes = db.relationship('Quiz', backref='course', lazy=True, cascade='all, delete-orphan')
+
+    def __init__(self, **kwargs):
+        super(Course, self).__init__(**kwargs)
 
     @property
     def title(self):
@@ -38,11 +42,11 @@ class Course(db.Model):
 
     @property
     def thumbnail(self):
-        return None
+        return self.image_url
 
     @thumbnail.setter
     def thumbnail(self, value):
-        return None
+        self.image_url = value
 
     @property
     def instructor(self):
@@ -59,8 +63,8 @@ class Course(db.Model):
             "instructor": self.instructor,
             "status": self.status,
             "lesson_count": self.lesson_count,
-            "image_url": None,
-            "thumbnail": None,
+            "image_url": self.image_url,
+            "thumbnail": self.image_url,
             "category": "General",
             "level": "Beginner",
             "student_count": len(self.enrollments) if self.enrollments else 0,
