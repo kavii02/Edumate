@@ -28,7 +28,9 @@ class Quiz(db.Model):
 
     @property
     def total_questions(self):
-        return len(self.questions) if self.questions else 0
+        tutor_count = len(self.tutor_questions) if self.tutor_questions else 0
+        student_count = len(self.questions) if self.questions else 0
+        return tutor_count + student_count
 
     @property
     def passing_score(self):
@@ -61,10 +63,15 @@ class Quiz(db.Model):
             "created_at": None,
         }
         if include_questions:
-            if hide_answers:
-                data["questions"] = [q.to_dict_hide_answer() for q in self.questions]
+            if self.tutor_questions:
+                data["questions"] = [q.to_dict() for q in self.tutor_questions]
+            elif self.questions:
+                if hide_answers:
+                    data["questions"] = [q.to_dict_hide_answer() for q in self.questions]
+                else:
+                    data["questions"] = [q.to_dict() for q in self.questions]
             else:
-                data["questions"] = [q.to_dict() for q in self.questions]
+                data["questions"] = []
         return data
 
     def __repr__(self):

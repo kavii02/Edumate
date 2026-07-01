@@ -64,6 +64,27 @@ export const getDashboardStats = async (tutorId) => {
   }
 };
 
+export const getStudentMonitoring = async (tutorId, courseId = null) => {
+  try {
+    const params = new URLSearchParams();
+    if (courseId) {
+      params.append("course_id", courseId);
+    }
+
+    const url = params.toString()
+      ? `${API_BASE_URL}/monitoring/${tutorId}?${params.toString()}`
+      : `${API_BASE_URL}/monitoring/${tutorId}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+    });
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching student monitoring data:", error);
+    return { success: false, message: "Failed to fetch student monitoring data" };
+  }
+};
+
 // ==================== COURSES ====================
 
 export const getTutorCourses = async (tutorId) => {
@@ -193,7 +214,7 @@ export const createQuiz = async (tutorId, quizData) => {
 
 export const getQuizDetails = async (quizId) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/quizzes/${quizId}`, {
+    const response = await fetch(`${API_BASE_URL}/quizzes/details/${quizId}`, {
       method: "GET",
     });
     return await response.json();

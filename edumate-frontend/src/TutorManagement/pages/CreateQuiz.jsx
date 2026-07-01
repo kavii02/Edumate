@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Save, RefreshCw, CheckCircle2, Clock3, X, UploadCloud, BrainCircuit } from "lucide-react";
 import { createQuiz, getTutorQuizzes, publishQuiz, updateQuiz, getQuizDetails, generateQuizFromPdf } from "../services/tutorApiService";
+import { getAllCourses } from "../../services/courseApiService";
 import { useTutorAuth } from "../context/TutorAuthContext";
 
 const CreateQuiz = () => {
@@ -25,6 +26,10 @@ const CreateQuiz = () => {
   const [error, setError] = useState("");
   const [selectedQuizId, setSelectedQuizId] = useState(null);
   
+  // Courses state
+  const [courses, setCourses] = useState([]);
+  const [selectedCourseId, setSelectedCourseId] = useState("");
+  
   // Tabs and Auto-generation states
   const [activeTab, setActiveTab] = useState("manual"); // 'manual' or 'auto'
   const [pdfFile, setPdfFile] = useState(null);
@@ -38,6 +43,11 @@ const CreateQuiz = () => {
     setDifficultyLevel("Easy");
     setDurationMinutes(20);
     setPublishing(false);
+    if (courses.length > 0) {
+      setSelectedCourseId(courses[0].course_id || "");
+    } else {
+      setSelectedCourseId("");
+    }
     setQuestions([
       {
         id: Date.now(),
@@ -68,25 +78,36 @@ const CreateQuiz = () => {
   };
 
   useEffect(() => {
-    const fetchQuizzes = async () => {
+    const fetchQuizzesAndCourses = async () => {
       if (!tutorId) {
         setSavedQuizzes([]);
+        setCourses([]);
         return;
       }
 
       setLoadingQuizzes(true);
-      const response = await getTutorQuizzes(tutorId);
-
-      if (response.success) {
-        setSavedQuizzes(response.quizzes || []);
+      
+      // Fetch Quizzes
+      const quizzesResponse = await getTutorQuizzes(tutorId);
+      if (quizzesResponse.success) {
+        setSavedQuizzes(quizzesResponse.quizzes || []);
       } else {
-        setError(response.message || "Failed to load quizzes.");
+        setError(quizzesResponse.message || "Failed to load quizzes.");
+      }
+
+      // Fetch Courses
+      const coursesResponse = await getAllCourses(tutorId);
+      if (coursesResponse.success) {
+        setCourses(coursesResponse.courses || []);
+        if (coursesResponse.courses && coursesResponse.courses.length > 0) {
+          setSelectedCourseId(coursesResponse.courses[0].course_id || "");
+        }
       }
 
       setLoadingQuizzes(false);
     };
 
-    fetchQuizzes();
+    fetchQuizzesAndCourses();
   }, [tutorId]);
 
   const addQuestion = () => {
@@ -180,6 +201,7 @@ const CreateQuiz = () => {
 
     const quizData = {
       title: quizTitle.trim(),
+      course_id: selectedCourseId ? Number(selectedCourseId) : null,
       difficulty_level: difficultyLevel,
       duration_minutes: Number(durationMinutes) || 20,
       is_published: publishing,
@@ -218,6 +240,7 @@ const CreateQuiz = () => {
       setDifficultyLevel(qz.difficulty_level || "Easy");
       setDurationMinutes(qz.duration_minutes || 20);
       setPublishing(qz.status === "Active" || qz.is_published);
+      setSelectedCourseId(qz.course_id || qz.courseId || "");
 
       if (qz.questions && qz.questions.length > 0) {
         const mappedQuestions = qz.questions.map((q) => {
@@ -261,7 +284,8 @@ const CreateQuiz = () => {
           },
         ]);
       }
-
+      
+      setActiveTab("manual");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       setError(response.message || "Failed to load quiz details.");
@@ -456,7 +480,25 @@ const CreateQuiz = () => {
           <div className="rounded-3xl border border-cyan-300/50 bg-[#041225]/80 p-7 shadow-[0_0_25px_rgba(34,211,238,0.45)]">
             <h2 className="text-2xl font-semibold mb-5">{selectedQuizId ? "Review Quiz Details" : "Quiz Details"}</h2>
 
-            <div className="grid gap-5 md:grid-cols-3">
+            <div className="grid gap-5 md:grid-cols-4">
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">
+                  Course
+                </label>
+                <select
+                  value={selectedCourseId}
+                  onChange={(e) => setSelectedCourseId(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 outline-none focus:border-cyan-300 text-white"
+                >
+                  <option value="">Choose a Course</option>
+                  {courses.map((course) => (
+                    <option key={course.course_id} value={course.course_id}>
+                      {course.course_name || course.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="block text-sm text-slate-400 mb-2">
                   Quiz Title
@@ -686,16 +728,6 @@ const CreateQuiz = () => {
                   </span>
                 </div>
 
-                <div className="mt-4 space-y-3">
-                  {quiz.questions?.map((question, index) => (
-                    <div key={question.question_id ?? index} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-                      <p className="text-sm font-medium text-white">{index + 1}. {question.question_text}</p>
-                      <p className="mt-2 text-xs text-slate-400">
-                        Options: {question.option_a}, {question.option_b}, {question.option_c}, {question.option_d}
-                      </p>
-                    </div>
-                  ))}
-                </div>
 
                 <div className="mt-4 flex flex-wrap gap-3">
                   {!quiz.is_published && (

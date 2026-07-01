@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify, request, current_app
 from werkzeug.utils import secure_filename
 
 from .. import db
-from ..models import Quiz, Question, CourseMaterial
+from ..models import Quiz, Question, CourseMaterial, QuizOwner
 from ..services.pdf_service import extract_text_from_pdf
 from ..services.ai_quiz_service import generate_quiz_with_ai
 
@@ -230,6 +230,10 @@ def generate_quiz_from_material(material_id):
 
         db.session.add(quiz)
         db.session.flush()
+
+        tutor_id = material.uploaded_by or (material.course.tutor_id if material.course else None)
+        if tutor_id:
+            db.session.add(QuizOwner(quiz_id=quiz.quiz_id, tutor_id=tutor_id))
 
         for q in questions:
             question = Question(

@@ -121,6 +121,9 @@ const Courses = () => {
   const handleDeleteMaterial = async (materialId) => {
     if (!selectedCourse) return;
 
+    const confirmed = window.confirm("Are you sure you want to delete this material?");
+    if (!confirmed) return;
+
     setModalLoading(true);
     const response = await deleteMaterial(materialId);
 
@@ -176,7 +179,7 @@ const Courses = () => {
         <iframe
           title={material.title}
           src={fileUrl}
-          className="h-[420px] w-full rounded-2xl border border-slate-700 bg-white"
+          className="h-105 w-full rounded-2xl border border-slate-700 bg-white"
         />
       );
     }
@@ -185,7 +188,7 @@ const Courses = () => {
       return (
         <video
           controls
-          className="max-h-[420px] w-full rounded-2xl border border-slate-700 bg-black"
+          className="max-h-105 w-full rounded-2xl border border-slate-700 bg-black"
           src={fileUrl}
         />
       );
@@ -274,7 +277,7 @@ const Courses = () => {
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-        <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[32px] border border-cyan-500/30 bg-[#041225] p-6 shadow-[0_24px_80px_rgba(7,18,34,0.55)]">
+        <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-4xl border border-cyan-500/30 bg-[#041225] p-6 shadow-[0_24px_80px_rgba(7,18,34,0.55)]">
           <div className="mb-6 flex items-start justify-between gap-4">
             <div>
               <p className="text-sm uppercase tracking-wide text-cyan-300">
@@ -307,7 +310,7 @@ const Courses = () => {
                       <textarea
                         value={editDescription}
                         onChange={(e) => setEditDescription(e.target.value)}
-                        className="min-h-[120px] w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-400"
+                        className="min-h-30 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-400"
                       />
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">

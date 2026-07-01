@@ -2,8 +2,13 @@ from flask import Blueprint, request, jsonify
 from sqlalchemy import text
 from werkzeug.security import generate_password_hash, check_password_hash
 from ..models import Tutor, Course, CourseMaterial, Quiz, QuizOwner, Question, Availability
+from ..student.models.student_model import Student
+from ..student.models.enrollment_model import Enrollment
+from ..student.models.quiz_result_model import QuizResult
+from ..student.models.attendance_model import AttendanceRecord
 from ..utils.password_utils import validate_password
 from .. import db
+from datetime import datetime
 
 
 tutor_bp = Blueprint("tutor", __name__)
@@ -191,6 +196,303 @@ def get_dashboard(tutor_id):
     }), 200
 
 
+def _student_display_name(student):
+    name = " ".join(part for part in [student.first_name, student.last_name] if part).strip()
+    return name or f"Student {student.student_id}"
+
+
+@tutor_bp.route("/monitoring/<int:tutor_id>", methods=["GET"])
+def get_student_monitoring(tutor_id):
+    """Get tutor-facing student monitoring data built from quiz and attendance records."""
+    tutor = Tutor.query.get(tutor_id)
+    if not tutor:
+        return jsonify({"success": False, "message": "Tutor not found"}), 404
+
+    course_filter = request.args.get("course_id", type=int)
+
+    if course_filter is not None:
+        course = Course.query.filter_by(course_id=course_filter, tutor_id=tutor_id).first()
+        if not course:
+            return jsonify({"success": False, "message": "Course not found for this tutor"}), 404
+        courses = [course]
+    else:
+        courses = Course.query.filter_by(tutor_id=tutor_id).all()
+
+    course_ids = [course.course_id for course in courses]
+    if not course_ids:
+        return jsonify({
+            "success": True,
+            "monitoring": {
+                "tutor_id": tutor_id,
+                "course_id": course_filter,
+                "summary": {
+                    "total_students": 0,
+                    "average_quiz_score": 0,
+                    "average_attendance": 0,
+                    "weak_students": 0,
+                    "average_students": 0,
+                    "high_performers": 0,
+                    "attendance_risk": 0,
+                },
+                "student_performance": [],
+                "weak_students": [],
+                "average_students": [],
+                "high_performers": [],
+                "attendance_risk_students": [],
+                "attendance_data": [],
+                "progress_history": [],
+                "confusion_data": [],
+                "topic_difficulty": [],
+                "activity_overview": {
+                    "last_login": [],
+                    "quiz_attempts": 0,
+                    "material_downloads": 0,
+                },
+            },
+        }), 200
+
+    enrollment_rows = Enrollment.query.filter(Enrollment.course_id.in_(course_ids)).all()
+    student_ids = sorted({enrollment.student_id for enrollment in enrollment_rows})
+
+    if not student_ids:
+        return jsonify({
+            "success": True,
+            "monitoring": {
+                "tutor_id": tutor_id,
+                "course_id": course_filter,
+                "summary": {
+                    "total_students": 0,
+                    "average_quiz_score": 0,
+                    "average_attendance": 0,
+                    "weak_students": 0,
+                    "average_students": 0,
+                    "high_performers": 0,
+                    "attendance_risk": 0,
+                },
+                "student_performance": [],
+                "weak_students": [],
+                "average_students": [],
+                "high_performers": [],
+                "attendance_risk_students": [],
+                "attendance_data": [],
+                "progress_history": [],
+                "confusion_data": [],
+                "topic_difficulty": [],
+                "activity_overview": {
+                    "last_login": [],
+                    "quiz_attempts": 0,
+                    "material_downloads": 0,
+                },
+            },
+        }), 200
+
+    students = Student.query.filter(Student.student_id.in_(student_ids)).all()
+    student_lookup = {student.student_id: student for student in students}
+
+    quiz_results = QuizResult.query.join(
+        Quiz,
+        QuizResult.quiz_id == Quiz.quiz_id
+    ).filter(
+        Quiz.course_id.in_(course_ids),
+        QuizResult.student_id.in_(student_ids)
+    ).all()
+
+    attendance_records = AttendanceRecord.query.filter(
+        AttendanceRecord.course_id.in_(course_ids),
+        AttendanceRecord.student_id.in_(student_ids)
+    ).all()
+
+    results_by_student = {student_id: [] for student_id in student_ids}
+    attendance_by_student = {student_id: [] for student_id in student_ids}
+    topic_buckets = {}
+
+    for result in quiz_results:
+        results_by_student.setdefault(result.student_id, []).append(result)
+        topic_name = result.quiz.title if result.quiz else f"Quiz {result.quiz_id}"
+        bucket = topic_buckets.setdefault(
+            topic_name,
+            {"topic": topic_name, "understood": 0, "partial": 0, "confused": 0, "total": 0},
+        )
+        bucket["total"] += 1
+        if result.percentage >= 75:
+            bucket["understood"] += 1
+        elif result.percentage >= 50:
+            bucket["partial"] += 1
+        else:
+            bucket["confused"] += 1
+
+    for record in attendance_records:
+        attendance_by_student.setdefault(record.student_id, []).append(record)
+
+    student_performance = []
+    weak_students = []
+    average_students = []
+    high_performers = []
+    attendance_risk_students = []
+    attendance_rows = []
+
+    quiz_score_total = 0
+    quiz_score_count = 0
+    attendance_total = 0
+    attendance_count = 0
+
+    for student_id in student_ids:
+        student = student_lookup.get(student_id)
+        if not student:
+            continue
+
+        student_results = sorted(
+            results_by_student.get(student_id, []),
+            key=lambda result: result.attempted_at or datetime.min,
+            reverse=True,
+        )
+        student_attendance = attendance_by_student.get(student_id, [])
+
+        quiz_average = round(
+            sum(result.percentage for result in student_results) / len(student_results),
+            1,
+        ) if student_results else 0
+        attendance_present = sum(1 for record in student_attendance if record.status in {"present", "late"})
+        attendance_percentage = round(
+            (attendance_present / len(student_attendance)) * 100,
+            1,
+        ) if student_attendance else 0
+        composite_score = round((quiz_average * 0.7) + (attendance_percentage * 0.3), 1) if (student_results or student_attendance) else 0
+
+        if quiz_average >= 75 and attendance_percentage >= 85:
+            category = "high"
+            high_performers.append(student)
+        elif quiz_average < 50 or attendance_percentage < 75:
+            category = "weak"
+            weak_students.append(student)
+        else:
+            category = "average"
+            average_students.append(student)
+
+        if attendance_percentage < 75:
+            attendance_risk_students.append(student)
+
+        quiz_score_total += quiz_average
+        quiz_score_count += 1
+        attendance_total += attendance_percentage
+        attendance_count += 1
+
+        last_quiz_at = student_results[0].attempted_at.isoformat() if student_results and student_results[0].attempted_at else None
+        last_attendance_at = sorted(
+            student_attendance,
+            key=lambda record: record.session_date or datetime.min.date(),
+            reverse=True,
+        )[0].session_date.isoformat() if student_attendance else None
+
+        student_performance.append({
+            "student_id": student.student_id,
+            "name": _student_display_name(student),
+            "quiz_average": quiz_average,
+            "attendance_percentage": attendance_percentage,
+            "composite_score": composite_score,
+            "category": category,
+            "quiz_attempts": len(student_results),
+            "attendance_sessions": len(student_attendance),
+            "last_quiz_at": last_quiz_at,
+            "last_attendance_at": last_attendance_at,
+        })
+
+        attendance_rows.append({
+            "student_id": student.student_id,
+            "name": _student_display_name(student),
+            "attendance": attendance_percentage,
+        })
+
+    student_performance.sort(key=lambda item: item["composite_score"], reverse=True)
+    attendance_rows.sort(key=lambda item: item["attendance"])
+
+    recent_attempts = sorted(
+        quiz_results,
+        key=lambda result: result.attempted_at or datetime.min,
+        reverse=True,
+    )[:5]
+
+    progress_history = []
+    for result in recent_attempts:
+        quiz_title = result.quiz.title if result.quiz else f"Quiz {result.quiz_id}"
+        student = student_lookup.get(result.student_id)
+        progress_history.append({
+            "quiz": quiz_title,
+            "student_name": _student_display_name(student) if student else f"Student {result.student_id}",
+            "score": round(result.percentage, 1),
+            "attempted_at": result.attempted_at.isoformat() if result.attempted_at else None,
+        })
+
+    confusion_data = []
+    for topic in sorted(topic_buckets.values(), key=lambda item: item["topic"]):
+        confusion_data.append({
+            "topic": topic["topic"],
+            "understood": topic["understood"],
+            "partial": topic["partial"],
+            "confused": topic["confused"],
+        })
+
+    topic_difficulty = sorted(
+        [
+            {
+                "topic": topic["topic"],
+                "confused": round((topic["confused"] / topic["total"]) * 100, 1) if topic["total"] else 0,
+            }
+            for topic in topic_buckets.values()
+        ],
+        key=lambda item: item["confused"],
+        reverse=True,
+    )[:5]
+
+    average_quiz_score = round(quiz_score_total / quiz_score_count, 1) if quiz_score_count else 0
+    average_attendance = round(attendance_total / attendance_count, 1) if attendance_count else 0
+
+    monitoring = {
+        "tutor_id": tutor_id,
+        "course_id": course_filter,
+        "summary": {
+            "total_students": len(student_performance),
+            "average_quiz_score": average_quiz_score,
+            "average_attendance": average_attendance,
+            "weak_students": len(weak_students),
+            "average_students": len(average_students),
+            "high_performers": len(high_performers),
+            "attendance_risk": len(attendance_risk_students),
+        },
+        "student_performance": student_performance,
+        "weak_students": [
+            {"student_id": student.student_id, "name": _student_display_name(student)}
+            for student in weak_students
+        ],
+        "average_students": [
+            {"student_id": student.student_id, "name": _student_display_name(student)}
+            for student in average_students
+        ],
+        "high_performers": [
+            {"student_id": student.student_id, "name": _student_display_name(student)}
+            for student in high_performers
+        ],
+        "attendance_risk_students": [
+            {"student_id": student.student_id, "name": _student_display_name(student)}
+            for student in attendance_risk_students
+        ],
+        "attendance_data": attendance_rows[:5],
+        "progress_history": progress_history,
+        "confusion_data": confusion_data[:3],
+        "topic_difficulty": topic_difficulty,
+        "activity_overview": {
+            "last_login": [
+                f"{entry['name']} - {entry['score']}%"
+                for entry in progress_history[:2]
+            ],
+            "quiz_attempts": len(quiz_results),
+            "material_downloads": 0,
+        },
+    }
+
+    return jsonify({"success": True, "monitoring": monitoring}), 200
+
+
 # Course management lives in course_routes.py under /api/tutor/courses
 
 @tutor_bp.route("/quizzes/<int:tutor_id>", methods=["GET"])
@@ -205,7 +507,7 @@ def get_quizzes(tutor_id):
     
     return jsonify({
         "success": True,
-        "quizzes": [quiz.to_dict() for quiz in quizzes]
+        "quizzes": [quiz.to_dict(include_questions=True) for quiz in quizzes]
     }), 200
 
 
@@ -282,7 +584,7 @@ def create_quiz():
     }), 201
 
 
-@tutor_bp.route("/quizzes/<int:quiz_id>", methods=["GET"])
+@tutor_bp.route("/quizzes/details/<int:quiz_id>", methods=["GET"])
 def get_quiz_details(quiz_id):
     """Get quiz details with questions"""
     quiz = Quiz.query.get(quiz_id)
