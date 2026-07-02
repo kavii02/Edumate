@@ -33,6 +33,9 @@ def incoming_requests(student_id):
             sr.status,
             sr.request_date,
             CONCAT(req_st.first_name, ' ', req_st.last_name) AS requester_name,
+            req_st.rating,
+            req_st.al_stream,
+            req_st.grade_level,
             sk.skill_name
         FROM skill_requests sr
         JOIN students req_st ON sr.requester_student_id = req_st.student_id
@@ -49,7 +52,10 @@ def incoming_requests(student_id):
         "status": r.status,
         "request_date": str(r.request_date),
         "requester_name": r.requester_name,
-        "skill_name": r.skill_name
+        "skill_name": r.skill_name,
+        "rating": r.rating,
+        "al_stream": r.al_stream,
+        "grade_level": r.grade_level
     } for r in rows]
 
     return jsonify(result), 200
@@ -66,6 +72,9 @@ def sent_requests(student_id):
             sr.status,
             sr.request_date,
             CONCAT(prov_st.first_name, ' ', prov_st.last_name) AS provider_name,
+            prov_st.rating,
+            prov_st.al_stream,
+            prov_st.grade_level,
             sk.skill_name
         FROM skill_requests sr
         JOIN students prov_st ON sr.provider_student_id = prov_st.student_id
@@ -82,7 +91,10 @@ def sent_requests(student_id):
         "status": r.status,
         "request_date": str(r.request_date),
         "provider_name": r.provider_name,
-        "skill_name": r.skill_name
+        "skill_name": r.skill_name,
+        "rating": r.rating,
+        "al_stream": r.al_stream,
+        "grade_level": r.grade_level
     } for r in rows]
 
     return jsonify(result), 200

@@ -12,7 +12,9 @@ from datetime import datetime, timedelta
 import traceback
 from dotenv import load_dotenv
 
-load_dotenv()
+basis_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+env_path = os.path.join(basis_dir, ".env")
+load_dotenv(dotenv_path=env_path)
 student_bp = Blueprint("student", __name__)
 
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me")
@@ -33,6 +35,8 @@ def send_verification_email(recipient_email, token):
     smtp_password = (os.getenv('SMTP_PASSWORD') or '').replace(' ', '')
     email_from = os.getenv('EMAIL_FROM', smtp_user)
     app_name = os.getenv('APP_NAME', 'EduMate')
+
+    print(f"[DEBUG EMAIL] host={smtp_host}, user={smtp_user}, has_password={bool(smtp_password)}, from={email_from}")
 
     if not all([smtp_host, smtp_user, smtp_password, email_from]):
         print('SMTP not configured. Skipping email.')

@@ -60,9 +60,17 @@ export default function QuizResultPage({ quizHistory, mockQuizzes }) {
       </div>
 
       {result.feedback && (
-        <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20">
-          <p className="text-sm font-semibold text-amber-100 mb-1">AI Feedback</p>
-          <p className="text-sm text-amber-200/90">{result.feedback}</p>
+        <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-amber-100 mb-1">AI Feedback</p>
+            <p className="text-sm text-amber-200/90">{result.feedback}</p>
+          </div>
+          <div className="pt-2 border-t border-amber-500/20 flex items-center justify-between text-amber-200 text-sm">
+            <span className="font-medium flex items-center gap-1.5">
+              ⚡ Points Awarded:
+            </span>
+            <span className="font-black text-amber-400">+{result.pointsAwarded ?? (correctCount * 50) ?? 0} pts</span>
+          </div>
         </div>
       )}
 

@@ -5,7 +5,9 @@ from flask_cors import CORS
 from flask_mail import Mail
 from dotenv import load_dotenv
 
-load_dotenv()
+basis_dir = os.path.dirname(os.path.dirname(__file__))
+env_path = os.path.join(basis_dir, ".env")
+load_dotenv(dotenv_path=env_path)
 
 db = SQLAlchemy()
 mail = Mail()
@@ -56,7 +58,16 @@ def create_app():
         app,
         resources={
             r"/api/*": {
-                "origins": "http://localhost:5173"
+                "origins": [
+                    "http://localhost:5173",
+                    "http://localhost:5174",
+                    "http://localhost:5175",
+                    "http://localhost:5176",
+                    "http://localhost:5177",
+                    "http://localhost:5178",
+                    "http://localhost:5179",
+                    "http://localhost:5180"
+                ]
             }
         },
         supports_credentials=True

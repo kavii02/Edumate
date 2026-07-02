@@ -1,5 +1,10 @@
+<<<<<<< Updated upstream
 ﻿import './Student.css'
 import { useState, useMemo, useEffect, useCallback } from 'react'
+=======
+import './Student.css'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+>>>>>>> Stashed changes
 import ConfirmationModal from './components/ConfirmationModal'
 import { Routes, Route, Navigate, useNavigate, useLocation, NavLink, useParams } from 'react-router-dom'
 import {
@@ -148,19 +153,10 @@ export default function StudentDashboard({ onLogout, student, token }) {
     { id: 'p2', title: 'Swap Database Quiz Tips', partner: 'A. Perera', reward: 'Access to SQL vault', status: 'pending' },
     { id: 'p3', title: 'Review React Project', partner: 'N. Fernando', reward: 'Code review credits', status: 'accepted' }
   ])
-  const [peerLearningPeers, setPeerLearningPeers] = useState([
-    { id: 'pl1', name: 'M. Nawarathne', expertise: 'Database Modeling', field: 'ICT-102', quizLevel: 'expert', rating: 4.9, reason: 'Scored 92% on Database Quiz 01', mutualInterest: 'Database projects, ER diagrams', status: 'available' },
-    { id: 'pl2', name: 'K. Jayasinghe', expertise: 'Python Algorithms', field: 'ICT-101', quizLevel: 'expert', rating: 4.8, reason: 'Scored 88% on Programming Quiz 01', mutualInterest: 'Algorithm practice, code review', status: 'available' },
-    { id: 'pl3', name: 'S. Fernando', expertise: 'Systems Design', field: 'ICT-104', quizLevel: 'expert', rating: 4.7, reason: 'Scored 91% on Web Development Quiz 01', mutualInterest: 'UML, agile study groups', status: 'connected' },
-    { id: 'pl4', name: 'R. Perera', expertise: 'SQL Query Optimization', field: 'ICT-102', quizLevel: 'intermediate', rating: 4.6, reason: 'Mid-level database performance', mutualInterest: 'Exam preparation and peer review', status: 'incoming' },
-    { id: 'pl5', name: 'A. Perera', expertise: 'Networking & OSI', field: 'ICT-103', quizLevel: 'expert', rating: 4.8, reason: 'Scored 95% on Networking Quiz 01', mutualInterest: 'Subnetting labs, security', status: 'available' }
-  ])
-  const [openPeerChatId, setOpenPeerChatId] = useState('pl3')
-  const [peerChatMessages, setPeerChatMessages] = useState({
-    pl3: [
-      { id: 'm1', sender: 'peer', type: 'text', content: 'Hi Livini! I saw your request on database normalization. Want to review the ER diagrams together tonight?', time: '10:12 AM' }
-    ]
-  })
+  const [peerLearningPeers, setPeerLearningPeers] = useState([])
+  const [openPeerChatId, setOpenPeerChatId] = useState(null)
+  const [peerChatMessages, setPeerChatMessages] = useState({})
+  const [showChatModal, setShowChatModal] = useState(false)
   const getQuizPerformanceLevel = (percentage) => {
     if (percentage >= 80) return 'expert'
     if (percentage >= 50) return 'intermediate'
@@ -341,6 +337,276 @@ export default function StudentDashboard({ onLogout, student, token }) {
     }
   }, [student?.student_id, token])
 
+  const fetchPeersAndRequests = useCallback(async () => {
+    if (!student?.student_id) return
+    try {
+      // 1. Fetch recommendations
+      const recRes = await fetch(`http://localhost:5000/api/recommendations/${student.student_id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+      const recommendations = recRes.ok ? (await recRes.json() || []) : []
+
+      // 2. Fetch sent requests
+      const sentRes = await fetch(`http://localhost:5000/api/skillrequests/sent/${student.student_id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+      const sentRequests = sentRes.ok ? (await sentRes.json() || []) : []
+
+      // 3. Fetch incoming requests
+      const incRes = await fetch(`http://localhost:5000/api/skillrequests/incoming/${student.student_id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+      const incomingRequests = incRes.ok ? (await incRes.json() || []) : []
+
+      const peerMap = new Map()
+
+      const makePeerObject = (studentId, name, expertise, field, scoreLabel, status, requestId = null, skillId = null, rating = null, alStream = null, gradeLevel = null, isSuggested = false, matchReason = null) => ({
+        id: `pl-${studentId}`,
+        dbStudentId: studentId,
+        requestId,
+        skillId,
+        name: name || `Student ${studentId}`,
+        expertise: expertise || 'General ICT',
+        field: alStream || field || 'General',
+        quizLevel: gradeLevel || 'expert',
+        rating: rating !== null && rating !== undefined ? parseFloat(rating) : 0.0,
+        reason: matchReason || scoreLabel || 'Suggested Partner',
+        mutualInterest: `Study partner for ${expertise || 'General ICT'}`,
+        status: status,
+        isSuggested
+      })
+
+      recommendations.forEach(r => {
+        const sid = r.student_id
+        peerMap.set(sid, makePeerObject(
+          sid,
+          r.peer_name,
+          r.can_teach,
+          r.wants,
+          r.score_label,
+          'available',
+          null,
+          r.teach_skill_id,
+          r.rating,
+          r.al_stream,
+          r.grade_level,
+          r.is_suggested,
+          r.reason
+        ))
+      })
+
+      sentRequests.forEach(req => {
+        const sid = req.provider_student_id
+        let status = 'available'
+        if (req.status === 'Pending') status = 'requested'
+        else if (req.status === 'Accepted') status = 'connected'
+        else if (req.status === 'Rejected') status = 'declined'
+
+        if (peerMap.has(sid)) {
+          const peer = peerMap.get(sid)
+          peer.status = status
+          peer.requestId = req.request_id
+        } else {
+          peerMap.set(sid, makePeerObject(
+            sid,
+            req.provider_name,
+            req.skill_name,
+            null,
+            null,
+            status,
+            req.request_id,
+            req.skill_id,
+            req.rating,
+            req.al_stream,
+            req.grade_level
+          ))
+        }
+      })
+
+      incomingRequests.forEach(req => {
+        const sid = req.requester_student_id
+        let status = 'available'
+        if (req.status === 'Pending') status = 'incoming'
+        else if (req.status === 'Accepted') status = 'connected'
+        else if (req.status === 'Rejected') status = 'declined'
+
+        if (peerMap.has(sid)) {
+          const peer = peerMap.get(sid)
+          peer.status = status
+          peer.requestId = req.request_id
+        } else {
+          peerMap.set(sid, makePeerObject(
+            sid,
+            req.requester_name,
+            req.skill_name,
+            null,
+            null,
+            status,
+            req.request_id,
+            req.skill_id,
+            req.rating,
+            req.al_stream,
+            req.grade_level
+          ))
+        }
+      })
+
+      setPeerLearningPeers(Array.from(peerMap.values()))
+
+      // Generate request notifications dynamically from database requests
+      const requestNotifications = []
+      incomingRequests.forEach(req => {
+        if (req.status === 'Pending') {
+          requestNotifications.push({
+            id: `req-${req.request_id}`,
+            text: `New peer learning request from ${req.requester_name} to learn ${req.skill_name}.`,
+            unread: true
+          })
+        }
+      })
+      sentRequests.forEach(req => {
+        if (req.status === 'Accepted') {
+          requestNotifications.push({
+            id: `acc-${req.request_id}`,
+            text: `${req.provider_name} accepted your study request to learn ${req.skill_name}!`,
+            unread: true
+          })
+        }
+      })
+
+      setNotifications(prev => {
+        const staticNotifications = prev.filter(n => typeof n.id === 'number' || (!n.id.startsWith('req-') && !n.id.startsWith('acc-')))
+        const merged = [...requestNotifications.map(newN => {
+          const existing = prev.find(oldN => oldN.id === newN.id)
+          return existing ? { ...newN, unread: existing.unread } : newN
+        }), ...staticNotifications]
+        return merged
+      })
+    } catch (e) {
+      console.error("Error fetching peer community:", e)
+    }
+  }, [student?.student_id, token])
+
+  const peerLearningPeersRef = useRef([])
+  useEffect(() => {
+    peerLearningPeersRef.current = peerLearningPeers
+  }, [peerLearningPeers])
+
+  // Polling chat messages for all connected peers
+  useEffect(() => {
+    let active = true
+    const checkAllMessages = async () => {
+      const connectedPeers = peerLearningPeersRef.current.filter(p => p.status === 'connected')
+      for (const peer of connectedPeers) {
+        if (!peer.requestId) continue
+        try {
+          const res = await fetch(`http://localhost:5000/api/skillmessages/${peer.requestId}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          })
+          if (res.ok && active) {
+            const msgs = await res.json()
+            const peerId = peer.id
+
+            setPeerChatMessages(prev => {
+              const oldMsgs = prev[peerId] || []
+              const oldIds = new Set(oldMsgs.map(m => String(m.id)))
+              
+              let hasNew = false
+              const parsedMsgs = msgs.map(m => {
+                const msgId = String(m.message_id)
+                if (!oldIds.has(msgId)) {
+                  if (m.sender_id !== student?.student_id) {
+                    hasNew = true
+                    
+                    // Add to notifications if not already there
+                    setNotifications(prevNotif => {
+                      if (prevNotif.some(n => n.id === `msg-${msgId}`)) return prevNotif
+                      const snippet = m.message.slice(0, 30) + (m.message.length > 30 ? '...' : '')
+                      return [
+                        {
+                          id: `msg-${msgId}`,
+                          text: `New chat message from ${peer.name}: "${snippet}"`,
+                          unread: true
+                        },
+                        ...prevNotif
+                      ]
+                    })
+                  }
+                }
+
+                let timeStr = '10:00 AM'
+                try {
+                  if (m.sent_at) {
+                    const dateObj = new Date(m.sent_at)
+                    if (!isNaN(dateObj.getTime())) {
+                      timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    }
+                  }
+                } catch {}
+                
+                let msgType = 'text'
+                let fileInfo = {}
+                if (m.message?.startsWith('📎 Shared file:')) {
+                  msgType = 'attachment'
+                  const fileName = m.message.replace('📎 Shared file:', '').trim()
+                  fileInfo = {
+                    fileName,
+                    fileType: fileName.endsWith('.pdf') ? 'application/pdf' : fileName.endsWith('.mp3') || fileName.endsWith('.wav') || fileName.endsWith('.webm') ? 'audio/mpeg' : 'image/png',
+                    file: new Blob([`Dummy file content: ${fileName}`], { type: 'text/plain' })
+                  }
+                }
+
+                return {
+                  id: msgId,
+                  sender: m.sender_id === student?.student_id ? 'me' : 'peer',
+                  type: msgType,
+                  content: m.message,
+                  time: timeStr,
+                  ...fileInfo
+                }
+              })
+
+              if (parsedMsgs.length === oldMsgs.length) {
+                return prev
+              }
+
+              // If there is a new incoming message and it's not the currently open chat screen, set unread indicator
+              if (hasNew && (openPeerChatId !== peerId || !showChatModal)) {
+                setPeerLearningPeers(prevPeers => prevPeers.map(p => 
+                  p.id === peerId ? { ...p, hasUnreadMessage: true } : p
+                ))
+              }
+
+              return {
+                ...prev,
+                [peerId]: parsedMsgs
+              }
+            })
+          }
+        } catch (err) {
+          console.error("Error polling peer chat messages:", err)
+        }
+      }
+    }
+
+    checkAllMessages()
+    const interval = setInterval(checkAllMessages, 4000)
+
+    return () => {
+      active = false
+      clearInterval(interval)
+    }
+  }, [openPeerChatId, showChatModal, student?.student_id, token])
+
+  // Clear unread message badge when chat is opened for a specific peer
+  useEffect(() => {
+    if (openPeerChatId && showChatModal) {
+      setPeerLearningPeers(prev => prev.map(p => 
+        p.id === openPeerChatId ? { ...p, hasUnreadMessage: false } : p
+      ))
+    }
+  }, [openPeerChatId, showChatModal])
+
   useEffect(() => {
     if (!student?.student_id) return
     fetchCourses()
@@ -348,11 +614,34 @@ export default function StudentDashboard({ onLogout, student, token }) {
     fetchPlannerTasks()
     fetchQuizzes()
     fetchQuizHistory()
-  }, [student?.student_id, fetchCourses, fetchAttendance, fetchPlannerTasks, fetchQuizzes, fetchQuizHistory])
+    fetchPeersAndRequests()
+  }, [student?.student_id, fetchCourses, fetchAttendance, fetchPlannerTasks, fetchQuizzes, fetchQuizHistory, fetchPeersAndRequests])
+
+  const fetchLeaderboard = useCallback(async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/quiz/leaderboard')
+      const data = await res.json()
+      if (res.ok && data.success && data.leaderboard?.length > 0) {
+        setLeaderboardEntries(data.leaderboard.map(e => ({
+          indexNo: `ID-${e.student_id}`,
+          name: e.name,
+          points: e.points,
+          emoji: '🎯',
+          badges: 0,
+          rankTitle: e.points >= 1500 ? 'Code Titan' : e.points >= 1100 ? 'Code Champion' : e.points >= 800 ? 'Rising Coder' : 'Code Cadet',
+          rank: e.rank
+        })))
+      }
+    } catch (err) {
+      console.error("Error fetching leaderboard:", err)
+    }
+  }, [])
 
   const handleQuizSubmitted = () => {
     fetchQuizzes()
     fetchQuizHistory()
+    fetchLeaderboard()
+    fetchPeersAndRequests()
   }
 
   useEffect(() => {
@@ -361,23 +650,8 @@ export default function StudentDashboard({ onLogout, student, token }) {
   }, [leaderboardEntries, student?.student_id])
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/quiz/leaderboard')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.leaderboard?.length > 0) {
-          setLeaderboardEntries(data.leaderboard.map(e => ({
-            indexNo: `ID-${e.student_id}`,
-            name: e.name,
-            points: e.points,
-            emoji: '🎯',
-            badges: 0,
-            rankTitle: e.points >= 1500 ? 'Code Titan' : e.points >= 1100 ? 'Code Champion' : e.points >= 800 ? 'Rising Coder' : 'Code Cadet',
-            rank: e.rank
-          })))
-        }
-      })
-      .catch(() => {})
-  }, [])
+    fetchLeaderboard()
+  }, [fetchLeaderboard, student?.student_id])
 
   const leaderboardRank = leaderboardEntries.find((e) => e.indexNo === `ID-${student?.student_id}`)?.rank ?? '-'
 
@@ -684,93 +958,155 @@ export default function StudentDashboard({ onLogout, student, token }) {
     return weaknesses.length > 0 ? weaknesses.join(', ') : 'No strong weakness detected yet. Keep learning!'
   }
 
-  const handleSendPeerRequest = (peerId) => {
-    const peer = peerLearningPeers.find((peer) => peer.id === peerId)
-    if (!peer) return
+  const handleSendPeerRequest = async (peerId) => {
+    const peer = peerLearningPeers.find((p) => p.id === peerId)
+    if (!peer || !student?.student_id) return
 
-    setPeerLearningPeers(peerLearningPeers.map((peer) =>
-      peer.id === peerId ? { ...peer, status: 'requested' } : peer
-    ))
-    triggerToast('Peer request sent. Waiting for the other party to accept.')
+    try {
+      const res = await fetch('http://localhost:5000/api/skillrequests/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          requester_student_id: student.student_id,
+          provider_student_id: peer.dbStudentId,
+          skill_id: peer.skillId || 1
+        })
+      })
+      if (res.ok) {
+        triggerToast('Peer request sent. Waiting for the other party to accept.')
+        fetchPeersAndRequests()
+      } else {
+        triggerToast('Failed to send peer request.')
+      }
+    } catch {
+      triggerToast('Unable to connect to server.')
+    }
   }
 
-  const handlePeerAcceptedConnection = (peerId) => {
-    const peer = peerLearningPeers.find((peer) => peer.id === peerId)
-    if (!peer) return
+  const handlePeerAcceptedConnection = async (peerId) => {
+    const peer = peerLearningPeers.find((p) => p.id === peerId)
+    if (!peer || !peer.requestId) return
 
-    setPeerLearningPeers(peerLearningPeers.map((peer) =>
-      peer.id === peerId ? { ...peer, status: 'connected' } : peer
-    ))
-    setOpenPeerChatId(peerId)
-    triggerToast(`You accepted ${peer.name}'s request. Chat is now open.`)
-    setNotifications((prev) => [
-      { id: Date.now(), text: `You accepted ${peer.name}'s peer request.`, unread: true },
-      ...prev
-    ])
+    try {
+      const res = await fetch(`http://localhost:5000/api/skillrequests/accept/${peer.requestId}`, {
+        method: 'PUT',
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        triggerToast(`You accepted ${peer.name}'s request. Chat is now open.`)
+        fetchPeersAndRequests()
+      } else {
+        triggerToast('Failed to accept request.')
+      }
+    } catch {
+      triggerToast('Unable to connect to server.')
+    }
   }
 
-  const handlePeerDeclineConnection = (peerId) => {
-    const peer = peerLearningPeers.find((peer) => peer.id === peerId)
-    if (!peer) return
+  const handlePeerDeclineConnection = async (peerId) => {
+    const peer = peerLearningPeers.find((p) => p.id === peerId)
+    if (!peer || !peer.requestId) return
 
-    setPeerLearningPeers(peerLearningPeers.map((peer) =>
-      peer.id === peerId ? { ...peer, status: 'declined' } : peer
-    ))
-    triggerToast(`You declined ${peer.name}'s request.`)
+    try {
+      const res = await fetch(`http://localhost:5000/api/skillrequests/reject/${peer.requestId}`, {
+        method: 'PUT',
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        triggerToast(`You declined ${peer.name}'s request.`)
+        fetchPeersAndRequests()
+      } else {
+        triggerToast('Failed to decline request.')
+      }
+    } catch {
+      triggerToast('Unable to connect to server.')
+    }
   }
 
   const handlePeerAcceptedByOther = (peerId) => {
-    const peer = peerLearningPeers.find((p) => p.id === peerId)
-    if (!peer) return
-    setPeerLearningPeers((prev) => prev.map((p) => p.id === peerId ? { ...p, status: 'connected' } : p))
-    setNotifications((prev) => [
-      { id: Date.now(), text: `${peer.name} accepted your peer request.`, unread: true },
-      ...prev
-    ])
-    triggerToast(`${peer.name} accepted your request. See Notifications to open chat.`)
+    fetchPeersAndRequests()
   }
 
-  const handleEndPeerConnection = (peerId) => {
-    const peer = peerLearningPeers.find((p) => p.id === peerId)
-    if (!peer) return
-    setPeerLearningPeers(peerLearningPeers.map((p) => p.id === peerId ? { ...p, status: 'available' } : p))
-    setOpenPeerChatId(null)
-    setPeerChatMessages((prev) => ({ ...prev, [peerId]: [] }))
-    setNotifications((prev) => [
-      { id: Date.now(), text: `Connection with ${peer.name} ended.`, unread: true },
-      ...prev
-    ])
-    triggerToast(`Ended connection with ${peer.name}.`)
+  const handleEndPeerConnection = async (peerId) => {
+    const peer = peerLearningPeers.find(p => p.id === peerId)
+    if (!peer || !peer.requestId) return
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/skillrequests/reject/${peer.requestId}`, {
+        method: 'PUT',
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        triggerToast(`Ended connection with ${peer.name}.`)
+        setOpenPeerChatId(null)
+        fetchPeersAndRequests()
+      } else {
+        triggerToast('Failed to end connection.')
+      }
+    } catch {
+      triggerToast('Unable to connect to server.')
+    }
   }
 
-  const handleSendPeerChatMessage = (peerId, message) => {
-    setPeerChatMessages((prev) => ({
-      ...prev,
-      [peerId]: [
-        ...(prev[peerId] || []),
-        { id: Date.now().toString(), ...message }
-      ]
-    }))
+  const handleSendPeerChatMessage = async (peerId, message) => {
+    const peer = peerLearningPeers.find(p => p.id === peerId)
+    if (!peer || !peer.requestId || !student?.student_id) return
+
+    try {
+      const res = await fetch('http://localhost:5000/api/skillmessages/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          request_id: peer.requestId,
+          sender_id: student.student_id,
+          receiver_id: peer.dbStudentId,
+          message: message.content
+        })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setPeerChatMessages(prev => ({
+          ...prev,
+          [peerId]: [
+            ...(prev[peerId] || []),
+            {
+              id: String(data.message_id),
+              sender: 'me',
+              type: 'text',
+              content: data.message,
+              time: message.time
+            }
+          ]
+        }))
+      }
+    } catch (e) {
+      console.error("Error sending message:", e)
+    }
   }
 
-  const handleSendPeerAttachment = (peerId, file) => {
+  const handleSendPeerAttachment = async (peerId, file) => {
     if (!file) return
-    setPeerChatMessages((prev) => ({
-      ...prev,
-      [peerId]: [
-        ...(prev[peerId] || []),
-        {
-          id: Date.now().toString(),
-          sender: 'me',
-          type: 'attachment',
-          file,
-          fileName: file.name,
-          fileType: file.type,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ]
-    }))
-    triggerToast(`${file.name} shared in chat.`)
+    const peer = peerLearningPeers.find(p => p.id === peerId)
+    if (!peer || !peer.requestId || !student?.student_id) return
+
+    try {
+      const messageText = `📎 Shared file: ${file.name}`
+      const res = await fetch('http://localhost:5000/api/skillmessages/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          request_id: peer.requestId,
+          sender_id: student.student_id,
+          receiver_id: peer.dbStudentId,
+          message: messageText
+        })
+      })
+      if (res.ok) {
+        triggerToast(`${file.name} shared in chat.`)
+      }
+    } catch (e) {
+      console.error("Error sending attachment:", e)
+    }
   }
 
   const handleDownloadResource = (resource, course) => {
@@ -880,6 +1216,8 @@ export default function StudentDashboard({ onLogout, student, token }) {
       handlePeerAcceptedConnection={handlePeerAcceptedConnection}
       handlePeerDeclineConnection={handlePeerDeclineConnection}
       handleEndPeerConnection={handleEndPeerConnection}
+      showChatModal={showChatModal}
+      setShowChatModal={setShowChatModal}
     />
   )
 
