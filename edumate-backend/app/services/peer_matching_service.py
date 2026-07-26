@@ -4,8 +4,8 @@ from .. import db
 
 def generate_recommendations(student_id):
     # 0. Self-healing synchronization of QuizResult from QuizAttempt for legacy data
-    from app.student.models.quiz_attempt_model import QuizAttempt
-    from app.student.models.quiz_result_model import QuizResult
+    from app.models.quiz_attempt_model import QuizAttempt
+    from app.models.quiz_result_model import QuizResult
     from app.models.quiz_model import QuizQuestion
     
     attempts = QuizAttempt.query.all()
@@ -72,7 +72,7 @@ def generate_recommendations(student_id):
         student_skills_map[pid].append(s)
 
     # 4. Fetch my weak areas (Quiz percentage < 70)
-    from app.student.models.quiz_result_model import QuizResult
+    from app.models.quiz_result_model import QuizResult
     my_weak_results = db.session.query(QuizResult).filter(QuizResult.student_id == student_id, QuizResult.percentage < 70).all()
     
     weak_topics = set()

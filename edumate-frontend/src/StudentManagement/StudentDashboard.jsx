@@ -1,10 +1,5 @@
-<<<<<<< Updated upstream
 ﻿import './Student.css'
-import { useState, useMemo, useEffect, useCallback } from 'react'
-=======
-import './Student.css'
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
->>>>>>> Stashed changes
 import ConfirmationModal from './components/ConfirmationModal'
 import { Routes, Route, Navigate, useNavigate, useLocation, NavLink, useParams } from 'react-router-dom'
 import {
