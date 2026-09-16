@@ -1,10 +1,5 @@
-<<<<<<< Updated upstream
-﻿import './Student.css'
-import { useState, useMemo, useEffect, useCallback } from 'react'
-=======
 import './Student.css'
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
->>>>>>> Stashed changes
 import ConfirmationModal from './components/ConfirmationModal'
 import { Routes, Route, Navigate, useNavigate, useLocation, NavLink, useParams } from 'react-router-dom'
 import {
@@ -1235,7 +1230,6 @@ export default function StudentDashboard({ onLogout, student, token }) {
       tab={communityTab}
       setTab={setCommunityTab}
       peersContent={peerLearningPage}
-      onSkillBarterClick={() => triggerToast('Skill Barter is coming soon — a teammate is building this feature.')}
     />
   )
 

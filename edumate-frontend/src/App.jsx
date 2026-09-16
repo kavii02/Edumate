@@ -5,7 +5,6 @@ import { saveTutorSession } from './services/authApiService'
 import AdminDashboard from './AdminManagement/AdminDashboard'
 import StudentDashboard from './StudentManagement/StudentDashboard'
 import TutorMain from './TutorManagement/TutorMain'
-import SkillBarterContainer from './SkillBarterSystem/SkillBarterContainer'
 
 import StudentRegistration from './StudentRegistration'
 import ForgotPasswordModal from './auth/ForgotPasswordModal'
@@ -31,7 +30,6 @@ export default function App() {
 
   const [showRegistration, setShowRegistration] = useState(false)
   const [showForgotPassword, setShowForgotPassword] = useState(false)
-  const [testBarter, setTestBarter] = useState(false)
   const [timeoutMessage, setTimeoutMessage] = useState('')
   const inactivityTimerRef = useRef(null)
 
@@ -342,41 +340,7 @@ export default function App() {
         </div>
       )}
 
-      <div
-        style={{
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          zIndex: 9999,
-          background: '#0f172a',
-          border: '1px solid #8b5cf6',
-          padding: '10px',
-          borderRadius: '12px',
-          boxShadow: '0px 4px 20px rgba(139, 92, 246, 0.25)',
-        }}
-      >
-        <button
-          onClick={() => setTestBarter(!testBarter)}
-          style={{
-            background: '#8b5cf6',
-            color: '#fff',
-            border: 'none',
-            padding: '8px 12px',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-          }}
-        >
-          {testBarter ? '← Back to Portal' : '⚡ Test Skill Barter System'}
-        </button>
-      </div>
-
-      {testBarter ? (
-        <div style={{ padding: '20px', position: 'relative', zIndex: 10 }}>
-          <SkillBarterContainer />
-        </div>
-      ) : (
-        <>
+      <>
           {!role && !loggedIn && <RoleSelection onChooseRole={chooseRole} />}
 
               {!verificationPending && role && !loggedIn && !showRegistration && (
@@ -440,7 +404,6 @@ export default function App() {
             <ForgotPasswordModal onClose={() => setShowForgotPassword(false)} />
           )}
         </>
-      )}
-    </div>
-  )
-}
+      </div>
+    )
+  }

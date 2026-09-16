@@ -8,6 +8,7 @@ from werkzeug.security import check_password_hash
 from .. import db
 from ..models import Admin, AdminVerificationCode
 from ..services.email_service import send_verification_email
+from ..services.logging_service import log_login as log_system_login, log_multiple_failed_logins
 
 
 auth_bp = Blueprint("auth", __name__)
@@ -36,10 +37,12 @@ def detect_device(user_agent_string):
     return "Unknown Device"
 
 
-def log_login(email, role, status):
+def log_login(email, role, status, user_name=None):
+    """Log login to both login_logs and system_logs tables"""
     ip = request.headers.get("X-Forwarded-For", request.remote_addr) or "Unknown"
     device = detect_device(request.headers.get("User-Agent", ""))
 
+    # Log to login_logs table (existing)
     db.session.execute(text("""
         INSERT INTO login_logs (user_email, role, login_time, device, ip_address, status)
         VALUES (:email, :role, :now, :device, :ip, :status)
@@ -52,6 +55,10 @@ def log_login(email, role, status):
         "status": status
     })
     db.session.commit()
+
+    # Log to system_logs table (new)
+    log_system_login(email, user_name or email, role, status, ip)
+
 
 
 def cleanup_old_codes():
@@ -88,7 +95,7 @@ def admin_login():
     admin = Admin.query.filter_by(email=username).first()
 
     if not admin or not check_password_hash(admin.password, password):
-        log_login(username, "Admin", "Failed")
+        log_login(username, "Admin", "Failed", username)
         return jsonify({"success": False, "message": "Invalid username or password"}), 401
 
     cleanup_old_codes()
@@ -96,7 +103,8 @@ def admin_login():
     AdminVerificationCode.query.filter_by(
         admin_id=admin.admin_id,
         used=False
-    ).update({"used": True})
+    ).update({"used": True}, synchronize_session=False)
+    db.session.commit()
 
     verification_code = generate_verification_code()
 
@@ -159,13 +167,15 @@ def verify_code():
 
     if verification_record.is_expired():
         verification_record.used = True
+        db.session.add(verification_record)
         db.session.commit()
         return jsonify({"success": False, "message": "Verification code expired."}), 401
 
     verification_record.used = True
+    db.session.add(verification_record)
     db.session.commit()
 
-    log_login(email, "Admin", "Success")
+    log_login(email, "Admin", "Success", admin.full_name)
 
     return jsonify({
         "success": True,
@@ -195,7 +205,8 @@ def resend_code():
     AdminVerificationCode.query.filter_by(
         admin_id=admin.admin_id,
         used=False
-    ).update({"used": True})
+    ).update({"used": True}, synchronize_session=False)
+    db.session.commit()
 
     verification_code = generate_verification_code()
 
@@ -244,10 +255,11 @@ def student_login():
     """), {"email": email}).fetchone()
 
     if not student or student.password != password:
-        log_login(email, "Student", "Failed")
+        log_login(email, "Student", "Failed", email)
         return jsonify({"success": False, "message": "Invalid email or password."}), 401
 
-    log_login(student.email, "Student", "Success")
+    student_name = f"{student.first_name} {student.last_name}"
+    log_login(student.email, "Student", "Success", student_name)
 
     return jsonify({
         "success": True,
@@ -281,14 +293,15 @@ def tutor_login():
     """), {"email": email}).fetchone()
 
     if not tutor:
-        log_login(email, "Tutor", "Failed")
+        log_login(email, "Tutor", "Failed", email)
         return jsonify({"success": False, "message": "Invalid email or password."}), 401
 
     if not check_password_hash(tutor.password, password):
-        log_login(email, "Tutor", "Failed")
+        log_login(email, "Tutor", "Failed", email)
         return jsonify({"success": False, "message": "Invalid email or password."}), 401
 
-    log_login(tutor.email, "Tutor", "Success")
+    tutor_name = f"{tutor.first_name} {tutor.last_name}"
+    log_login(tutor.email, "Tutor", "Success", tutor_name)
 
     return jsonify({
         "success": True,

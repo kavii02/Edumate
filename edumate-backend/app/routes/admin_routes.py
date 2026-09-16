@@ -2,6 +2,11 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy import text
 from werkzeug.security import check_password_hash, generate_password_hash
 from .. import db
+from ..services.logging_service import (
+    log_course_approval, 
+    log_course_rejection,
+    log_user_deletion
+)
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -64,22 +69,68 @@ def get_users():
 
 @admin_bp.route("/users/student/<int:student_id>", methods=["DELETE"])
 def delete_student(student_id):
-    db.session.execute(
-        text("DELETE FROM students WHERE student_id = :student_id"),
-        {"student_id": student_id}
-    )
-    db.session.commit()
-    return jsonify({"message": "Student deleted successfully"}), 200
+    try:
+        # Get student details before deletion
+        student = db.session.execute(
+            text("SELECT email, first_name, last_name FROM students WHERE student_id = :student_id"),
+            {"student_id": student_id}
+        ).fetchone()
+        
+        if not student:
+            return jsonify({"message": "Student not found"}), 404
+        
+        # Delete the student
+        db.session.execute(
+            text("DELETE FROM students WHERE student_id = :student_id"),
+            {"student_id": student_id}
+        )
+        db.session.commit()
+        
+        # Get admin info
+        admin_email = request.headers.get('X-Admin-Email', 'admin@system.com')
+        admin_name = request.headers.get('X-Admin-Name', 'Admin')
+        student_name = f"{student.first_name} {student.last_name}"
+        
+        # Log the deletion
+        log_user_deletion(student.email, student_name, 'Student', admin_email, admin_name)
+        
+        return jsonify({"message": "Student deleted successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": f"Error deleting student: {str(e)}"}), 500
 
 
 @admin_bp.route("/users/tutor/<int:tutor_id>", methods=["DELETE"])
 def delete_tutor(tutor_id):
-    db.session.execute(
-        text("DELETE FROM tutors WHERE tutor_id = :tutor_id"),
-        {"tutor_id": tutor_id}
-    )
-    db.session.commit()
-    return jsonify({"message": "Tutor deleted successfully"}), 200
+    try:
+        # Get tutor details before deletion
+        tutor = db.session.execute(
+            text("SELECT email, first_name, last_name FROM tutors WHERE tutor_id = :tutor_id"),
+            {"tutor_id": tutor_id}
+        ).fetchone()
+        
+        if not tutor:
+            return jsonify({"message": "Tutor not found"}), 404
+        
+        # Delete the tutor
+        db.session.execute(
+            text("DELETE FROM tutors WHERE tutor_id = :tutor_id"),
+            {"tutor_id": tutor_id}
+        )
+        db.session.commit()
+        
+        # Get admin info
+        admin_email = request.headers.get('X-Admin-Email', 'admin@system.com')
+        admin_name = request.headers.get('X-Admin-Name', 'Admin')
+        tutor_name = f"{tutor.first_name} {tutor.last_name}"
+        
+        # Log the deletion
+        log_user_deletion(tutor.email, tutor_name, 'Tutor', admin_email, admin_name)
+        
+        return jsonify({"message": "Tutor deleted successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": f"Error deleting tutor: {str(e)}"}), 500
 
 
 @admin_bp.route("/courses", methods=["GET"])
@@ -123,22 +174,69 @@ def get_pending_courses():
 
 @admin_bp.route("/courses/<int:course_id>/approve", methods=["PUT"])
 def approve_course(course_id):
-    db.session.execute(
-        text("UPDATE courses SET status = 'Approved' WHERE course_id = :course_id"),
-        {"course_id": course_id}
-    )
-    db.session.commit()
-    return jsonify({"message": "Course approved successfully"}), 200
+    try:
+        # Get course details
+        course = db.session.execute(
+            text("SELECT c.course_title, c.tutor_id FROM courses c WHERE c.course_id = :course_id"),
+            {"course_id": course_id}
+        ).fetchone()
+        
+        if not course:
+            return jsonify({"message": "Course not found"}), 404
+        
+        # Update course status
+        db.session.execute(
+            text("UPDATE courses SET status = 'Approved' WHERE course_id = :course_id"),
+            {"course_id": course_id}
+        )
+        db.session.commit()
+        
+        # Get admin info from request (you can get this from session or header)
+        admin_email = request.headers.get('X-Admin-Email', 'admin@system.com')
+        admin_name = request.headers.get('X-Admin-Name', 'Admin')
+        
+        # Log the approval
+        log_course_approval(course.course_title, admin_email, admin_name)
+        
+        return jsonify({"message": "Course approved successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": f"Error approving course: {str(e)}"}), 500
 
 
 @admin_bp.route("/courses/<int:course_id>/reject", methods=["PUT"])
 def reject_course(course_id):
-    db.session.execute(
-        text("UPDATE courses SET status = 'Rejected' WHERE course_id = :course_id"),
-        {"course_id": course_id}
-    )
-    db.session.commit()
-    return jsonify({"message": "Course rejected successfully"}), 200
+    try:
+        data = request.get_json() or {}
+        reason = data.get('reason', '')
+        
+        # Get course details
+        course = db.session.execute(
+            text("SELECT c.course_title FROM courses c WHERE c.course_id = :course_id"),
+            {"course_id": course_id}
+        ).fetchone()
+        
+        if not course:
+            return jsonify({"message": "Course not found"}), 404
+        
+        # Update course status
+        db.session.execute(
+            text("UPDATE courses SET status = 'Rejected' WHERE course_id = :course_id"),
+            {"course_id": course_id}
+        )
+        db.session.commit()
+        
+        # Get admin info from request
+        admin_email = request.headers.get('X-Admin-Email', 'admin@system.com')
+        admin_name = request.headers.get('X-Admin-Name', 'Admin')
+        
+        # Log the rejection
+        log_course_rejection(course.course_title, admin_email, admin_name, reason)
+        
+        return jsonify({"message": "Course rejected successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": f"Error rejecting course: {str(e)}"}), 500
 
 
 @admin_bp.route("/login-logs", methods=["GET"])
@@ -161,20 +259,21 @@ def get_login_logs():
 
 @admin_bp.route("/system-logs", methods=["GET"])
 def get_system_logs():
-    logs = db.session.execute(text("""
-        SELECT
-            log_id AS id,
-            created_at AS timestamp,
-            level,
-            user_email AS user,
-            action,
-            module,
-            ip_address AS ip
-        FROM system_logs
-        ORDER BY created_at DESC
-    """)).mappings().all()
-
-    return jsonify([dict(log) for log in logs]), 200
+    from ..models.system_log_model import SystemLog
+    
+    logs = SystemLog.query.order_by(SystemLog.created_at.desc()).all()
+    
+    return jsonify([{
+        'id': log.log_id,
+        'timestamp': log.created_at.isoformat() if log.created_at else None,
+        'level': log.level,
+        'user': log.user_email,
+        'user_name': log.user_name,
+        'user_role': log.user_role,
+        'action': log.action,
+        'module': log.module,
+        'ip': log.ip_address
+    } for log in logs]), 200
 
 
 @admin_bp.route("/user-reports", methods=["GET"])

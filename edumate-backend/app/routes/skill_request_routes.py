@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from sqlalchemy import text
 from .. import db
 from ..models.skill_request import SkillRequest
+from ..services.logging_service import log_skill_request
 
 skill_request_bp = Blueprint("skillrequests", __name__)
 
@@ -9,6 +10,17 @@ skill_request_bp = Blueprint("skillrequests", __name__)
 @skill_request_bp.route("/send", methods=["POST"])
 def send_request():
     data = request.get_json()
+
+    # Get student and skill details for logging
+    student = db.session.execute(
+        text("SELECT email, first_name, last_name FROM students WHERE student_id = :student_id"),
+        {"student_id": data["requester_student_id"]}
+    ).fetchone()
+    
+    skill = db.session.execute(
+        text("SELECT skill_name FROM skills WHERE skill_id = :skill_id"),
+        {"skill_id": data["skill_id"]}
+    ).fetchone()
 
     req = SkillRequest(
         requester_student_id=data["requester_student_id"],
@@ -18,6 +30,11 @@ def send_request():
 
     db.session.add(req)
     db.session.commit()
+    
+    # Log the skill request
+    if student and skill:
+        student_name = f"{student.first_name} {student.last_name}"
+        log_skill_request(student.email, student_name, skill.skill_name)
 
     return jsonify({"message": "Request Sent"}), 201
 

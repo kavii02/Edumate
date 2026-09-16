@@ -64,7 +64,7 @@ export default function AdminDashboard({ onLogout }) {
         setSummary(summaryData)
       }
 
-      const logsResponse = await fetch(`${API_BASE_URL}/api/admin/system-logs`)
+     const logsResponse = await fetch(`${API_BASE_URL}/api/admin/login-logs`)
       const logsData = await logsResponse.json()
 
       if (logsResponse.ok) {
@@ -196,37 +196,44 @@ export default function AdminDashboard({ onLogout }) {
 
             <section className="system-alerts-section">
               <div className="alerts-card neon-card-purple">
-                <h2>System Alerts (Logs)</h2>
+                <div className="table-header-row" style={{ marginBottom: '1.25rem' }}>
+                  <div>
+                    <h2>System Alerts (Logs)</h2>
+                    <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+                      {loading ? 'Loading…' : `Latest ${Math.min(logs.length, 5)} entries`}
+                    </p>
+                  </div>
+                </div>
 
                 <div className="table-wrapper">
                   <table className="alerts-table">
                     <thead>
                       <tr>
-                        <th>Timestamp</th>
-                        <th>Level</th>
-                        <th>User</th>
-                        <th>Action</th>
+                        <th>Login Time</th>
+                        <th>User Email</th>
+                        <th>Role</th>
+                        <th>Device</th>
+                        <th>IP Address</th>
+                        <th>Status</th>
                       </tr>
                     </thead>
 
                     <tbody>
                       {logs.length === 0 ? (
                         <tr>
-                          <td colSpan="4" className="empty-state">
-                            No system logs found.
+                          <td colSpan="6" className="empty-state">
+                            No login logs found.
                           </td>
                         </tr>
                       ) : (
                         logs.map((log) => (
                           <tr key={log.id}>
-                            <td>{log.timestamp}</td>
-                            <td>
-                              <span className={`alert-level ${String(log.level).toLowerCase()}`}>
-                                {log.level}
-                              </span>
-                            </td>
-                            <td>{log.user}</td>
-                            <td>{log.action}</td>
+                            <td>{log.login_time ? new Date(log.login_time).toLocaleString() : '—'}</td>
+                            <td>{log.user_email || '—'}</td>
+                            <td>{log.role || '—'}</td>
+                            <td>{log.device || '—'}</td>
+                            <td>{log.ip_address || '—'}</td>
+                            <td>{log.status || '—'}</td>
                           </tr>
                         ))
                       )}

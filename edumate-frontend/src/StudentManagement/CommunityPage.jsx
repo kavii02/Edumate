@@ -1,8 +1,8 @@
 import React from 'react'
-import { ArrowLeftRight } from 'lucide-react'
 import './Student.css'
+import SkillBarterContainer from '../SkillBarterSystem/SkillBarterContainer'
 
-export default function CommunityPage({ tab, setTab, peersContent, onSkillBarterClick }) {
+export default function CommunityPage({ tab, setTab, peersContent }) {
   const tabs = [
     { id: 'peers', label: 'Peer Learning' },
     { id: 'barter', label: 'Skill Barter' }
@@ -29,24 +29,7 @@ export default function CommunityPage({ tab, setTab, peersContent, onSkillBarter
           </button>
         ))}
       </div>
-      {tab === 'peers' ? peersContent : (
-        <div className="rounded-3xl bg-slate-950/70 border border-slate-900 p-8 text-center shadow-xl">
-          <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mx-auto mb-4">
-            <ArrowLeftRight size={28} className="text-purple-400" />
-          </div>
-          <h3 className="text-xl font-bold text-white mb-2">Skill Barter</h3>
-          <p className="text-sm text-slate-400 max-w-md mx-auto mb-6">
-            Exchange skills with classmates — offer what you know and learn what you need. This feature is being built by your team.
-          </p>
-          <button
-            type="button"
-            onClick={onSkillBarterClick}
-            className="px-6 py-3 rounded-2xl bg-gradient-to-r from-purple-500 to-indigo-600 text-white text-sm font-bold hover:opacity-95 transition-opacity"
-          >
-            Open Skill Barter
-          </button>
-        </div>
-      )}
+      {tab === 'peers' ? peersContent : <SkillBarterContainer />}
     </div>
   )
 }
