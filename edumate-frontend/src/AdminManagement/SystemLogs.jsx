@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Search, Filter, AlertTriangle, Info, AlertCircle, RefreshCw } from 'lucide-react'
-
-const API_BASE_URL = 'http://localhost:5000'
+import { adminFetch, API_BASE_URL } from './adminApi'
 
 const LEVEL_CONFIG = {
   CRITICAL: { color: '#ff3333', bg: 'rgba(255,51,51,0.15)', border: 'rgba(255,51,51,0.3)', icon: <AlertTriangle size={14} /> },
@@ -26,7 +25,7 @@ export default function SystemLogs() {
   const fetchLogs = async () => {
     try {
       setLoading(true)
-      const res = await fetch(`${API_BASE_URL}/api/admin/system-logs`)
+      const res = await adminFetch(`${API_BASE_URL}/api/admin/system-logs`)
       const data = await res.json()
       if (res.ok) setLogs(data)
     } catch (err) {

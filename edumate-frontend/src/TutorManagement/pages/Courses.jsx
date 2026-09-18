@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import {
-  getAllCourses,
   getCourse,
   addMaterial,
   deleteMaterial,
@@ -8,6 +7,7 @@ import {
   getMaterialFileUrl,
   uploadCourseCover,
 } from "../../services/courseApiService";
+import { getTutorCourses } from "../services/tutorApiService";
 import { useTutorAuth } from "../context/TutorAuthContext";
 
 const Courses = () => {
@@ -31,7 +31,7 @@ const Courses = () => {
     if (!tutorId) return;
 
     setLoading(true);
-    const response = await getAllCourses(tutorId);
+    const response = await getTutorCourses(tutorId);
 
     if (response.success) {
       setCourses(response.courses || []);
@@ -499,8 +499,8 @@ const Courses = () => {
                 </p>
 
                 <div className="mt-5 flex justify-between text-sm text-slate-400">
-                  <span>{course.student_count} Students</span>
-                  <span>{course.lesson_count} Lessons</span>
+                  <span>{course.enrollment_count ?? course.student_count ?? 0} Students</span>
+                  <span>{course.quiz_count ?? course.lesson_count ?? 0} Quizzes</span>
                 </div>
 
                 <div className="mt-6 flex gap-3">

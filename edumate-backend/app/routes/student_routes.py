@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from .. import db
 from ..models.student_model import Student, PendingStudent
 from ..models.enrollment_model import Enrollment
+from ..utils.student_auth import current_student_id
 import jwt
 import os
 import secrets
@@ -18,6 +19,33 @@ load_dotenv(dotenv_path=env_path)
 student_bp = Blueprint("student", __name__)
 
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me")
+
+
+@student_bp.route("/verify-token", methods=["GET"])
+def verify_token():
+    """Validate a stored student JWT and return fresh student data.
+    Used by the frontend on startup to prevent stale localStorage sessions."""
+    student_id = current_student_id()
+    if student_id is None:
+        return jsonify({"success": False, "message": "Invalid or expired token"}), 401
+
+    student = Student.query.get(student_id)
+    if not student:
+        return jsonify({"success": False, "message": "Student account no longer exists"}), 401
+
+    return jsonify({
+        "success": True,
+        "student": {
+            "student_id": student.student_id,
+            "first_name": student.first_name,
+            "last_name": student.last_name,
+            "email": student.email,
+            "school_name": student.school_name,
+            "grade_level": student.grade_level,
+            "al_stream": student.al_stream,
+            "rating": student.rating
+        }
+    }), 200
 
 
 def generate_token(student_id):
@@ -111,40 +139,56 @@ def register():
         if not data.get(field):
             return jsonify({"success": False, "message": f"{label} is required"}), 400
 
+    # Check if email already exists in students table
     if Student.query.filter_by(email=data['email']).first():
         return jsonify({"success": False, "message": "Email already registered"}), 409
 
+    # Clean up any leftover pending registration for this email
     existing_pending = PendingStudent.query.filter_by(email=data['email']).first()
     if existing_pending:
         db.session.delete(existing_pending)
         db.session.commit()
 
     try:
-        verification_token = generate_numeric_code(6)
-        expiry = datetime.utcnow() + timedelta(hours=24)
-
-        pending = PendingStudent(
+        # Save directly to the students table — no email verification barrier.
+        # is_verified = True so the student can log in immediately after registration.
+        student = Student(
             first_name=data['firstName'],
             last_name=data['lastName'],
             email=data['email'],
             school_name=data['schoolName'],
             grade_level=data['gradeLevel'],
             al_stream=data['alStream'],
-            verification_token=verification_token,
-            verification_expiry=expiry
+            is_verified=True
         )
-        pending.set_password(data['password'])
-        db.session.add(pending)
+        student.set_password(data['password'])
+        db.session.add(student)
         db.session.commit()
 
-        email_sent = send_verification_email(pending.email, verification_token)
-        debug_token = None if email_sent else verification_token
+        # Send a welcome email (best-effort — failure does NOT block registration)
+        try:
+            send_verification_email(student.email, "Welcome to EduMate! Your account is now active.")
+        except Exception:
+            pass  # Email failure is non-fatal
+
+        # Generate a login token so the frontend can auto-login after registration
+        token = generate_token(student.student_id)
 
         return jsonify({
             "success": True,
-            "message": "Registration successful. Verification code sent.",
-            "email": pending.email,
-            "debugToken": debug_token
+            "message": "Registration successful. You can now log in.",
+            "email": student.email,
+            "student": {
+                "student_id": student.student_id,
+                "first_name": student.first_name,
+                "last_name": student.last_name,
+                "email": student.email,
+                "school_name": student.school_name,
+                "grade_level": student.grade_level,
+                "al_stream": student.al_stream,
+                "rating": student.rating
+            },
+            "token": token
         }), 201
 
     except Exception as e:

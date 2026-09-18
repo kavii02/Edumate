@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import '../index.css'
+import { adminFetch, API_BASE_URL } from './adminApi'
 
-const API_BASE_URL = 'http://localhost:5000'
-
-export default function CourseApproval() {
+export default function CourseApproval({ isSuperAdmin = false }) {
   const [courses, setCourses] = useState([])
   const [selectedCourse, setSelectedCourse] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -12,7 +11,7 @@ export default function CourseApproval() {
     try {
       setLoading(true)
 
-      const response = await fetch(`${API_BASE_URL}/api/admin/courses`)
+      const response = await adminFetch(`${API_BASE_URL}/api/admin/courses/pending`)
       const data = await response.json()
 
       if (!response.ok) {
@@ -42,7 +41,7 @@ export default function CourseApproval() {
     if (!window.confirm(confirmText)) return
 
     try {
-      const response = await fetch(
+      const response = await adminFetch(
         `${API_BASE_URL}/api/admin/courses/${courseId}/${action}`,
         {
           method: 'PUT'
@@ -180,7 +179,7 @@ export default function CourseApproval() {
                 course submissions.
               </p>
 
-              <div className="course-detail-actions">
+              {isSuperAdmin && <div className="course-detail-actions">
                 <button
                   type="button"
                   className="course-action-button"
@@ -198,7 +197,7 @@ export default function CourseApproval() {
                 >
                   Reject Course
                 </button>
-              </div>
+              </div>}
             </div>
           </div>
         </div>
@@ -253,7 +252,7 @@ export default function CourseApproval() {
                           View Details
                         </button>
 
-                        {item.status === 'Pending' && (
+                        {isSuperAdmin && item.status === 'Pending' && (
                           <>
                             <button
                               type="button"

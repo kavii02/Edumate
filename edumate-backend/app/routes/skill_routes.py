@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from sqlalchemy import text
 from .. import db
 from ..models.skill import Skill
+from ..utils.student_auth import require_student
 
 skill_bp = Blueprint("skills", __name__)
 
@@ -42,7 +43,10 @@ def get_all_skills():
 
 
 @skill_bp.route("/student/<int:student_id>", methods=["GET"])
-def get_student_skills(student_id):
+@require_student
+def get_student_skills(student_id, authenticated_student_id):
+    if student_id != authenticated_student_id:
+        return jsonify({"error": "You can only view your own skills"}), 403
     rows = db.session.execute(text("""
         SELECT skill_id, skill_name, category, skill_level, description
         FROM skills
@@ -62,7 +66,10 @@ def get_student_skills(student_id):
 
 
 @skill_bp.route("/student/<int:student_id>", methods=["POST"])
-def add_student_skill(student_id):
+@require_student
+def add_student_skill(student_id, authenticated_student_id):
+    if student_id != authenticated_student_id:
+        return jsonify({"error": "You can only add your own skills"}), 403
     data = request.get_json()
 
     if not data.get("name") or not data.get("description"):
@@ -97,8 +104,18 @@ def add_student_skill(student_id):
 
 
 @skill_bp.route("/<int:skill_id>", methods=["PUT"])
-def update_skill(skill_id):
+@require_student
+def update_skill(skill_id, authenticated_student_id):
     data = request.get_json()
+
+    owner = db.session.execute(
+        text("SELECT student_id FROM skills WHERE skill_id = :skill_id"),
+        {"skill_id": skill_id},
+    ).scalar()
+    if owner is None:
+        return jsonify({"error": "Skill not found"}), 404
+    if owner != authenticated_student_id:
+        return jsonify({"error": "You can only update your own skills"}), 403
 
     db.session.execute(text("""
         UPDATE skills
@@ -120,7 +137,16 @@ def update_skill(skill_id):
 
 
 @skill_bp.route("/<int:skill_id>", methods=["DELETE"])
-def delete_skill(skill_id):
+@require_student
+def delete_skill(skill_id, authenticated_student_id):
+    owner = db.session.execute(
+        text("SELECT student_id FROM skills WHERE skill_id = :skill_id"),
+        {"skill_id": skill_id},
+    ).scalar()
+    if owner is None:
+        return jsonify({"error": "Skill not found"}), 404
+    if owner != authenticated_student_id:
+        return jsonify({"error": "You can only delete your own skills"}), 403
     db.session.execute(
         text("DELETE FROM skills WHERE skill_id = :sid"),
         {"sid": skill_id}

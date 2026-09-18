@@ -13,9 +13,12 @@ class Admin(db.Model):
 
     password = db.Column(db.String(255), nullable=False)
 
+    admin_level = db.Column(db.Integer, nullable=False, default=2)
+
     def to_dict(self):
         return {
             "admin_id": self.admin_id,
             "full_name": self.full_name,
-            "email": self.email
+            "email": self.email,
+            "admin_level": self.admin_level
         }

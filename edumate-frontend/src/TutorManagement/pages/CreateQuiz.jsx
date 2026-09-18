@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Save, RefreshCw, CheckCircle2, Clock3, X, UploadCloud, BrainCircuit } from "lucide-react";
-import { createQuiz, getTutorQuizzes, publishQuiz, updateQuiz, getQuizDetails, generateQuizFromPdf } from "../services/tutorApiService";
+import { createQuiz, getTutorQuizzes, publishQuiz, updateQuiz, getQuizDetails, generateQuizFromPdf, deleteQuiz } from "../services/tutorApiService";
 import { useTutorAuth } from "../context/TutorAuthContext";
 
 const CreateQuiz = () => {
@@ -279,6 +279,19 @@ const CreateQuiz = () => {
       await loadQuizzes();
     } else {
       setError(response.message || "Failed to publish quiz.");
+    }
+  };
+
+  const handleDeleteQuiz = async (quizId, quizTitle) => {
+    if (!window.confirm(`Delete quiz "${quizTitle}"? This cannot be undone.`)) return;
+    setError("");
+    const response = await deleteQuiz(quizId);
+    if (response.success) {
+      setMessage("Quiz deleted successfully.");
+      await loadQuizzes();
+      if (selectedQuizId === quizId) resetForm();
+    } else {
+      setError(response.message || "Failed to delete quiz.");
     }
   };
 
@@ -725,6 +738,13 @@ const CreateQuiz = () => {
                       View / Edit
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteQuiz(quiz.quiz_id, quiz.title)}
+                    className="rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-300 hover:bg-rose-500/20 hover:text-rose-200 flex items-center gap-1"
+                  >
+                    <Trash2 size={14} /> Delete
+                  </button>
                 </div>
               </div>
             ))}

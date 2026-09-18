@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   TrendingUp,
   PenLine,
@@ -7,11 +8,12 @@ import {
   CalendarDays,
 } from "lucide-react";
 import StatCard from "../components/StatCard";
-import { getDashboardStats } from "../services/tutorApiService";
+import { getDashboardStats, getRecentAnnouncements } from "../services/tutorApiService";
 import { useTutorAuth } from "../context/TutorAuthContext";
 
 const TutorDashboard = () => {
   const { tutorId, tutor } = useTutorAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     total_courses: 0,
     total_students: 0,
@@ -20,6 +22,7 @@ const TutorDashboard = () => {
     unread_queries: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [recentAnnouncements, setRecentAnnouncements] = useState([]);
   
   // Real Calendar states & helpers
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -80,10 +83,12 @@ const TutorDashboard = () => {
     if (!tutorId) return;
 
     const fetchStats = async () => {
-      const response = await getDashboardStats(tutorId);
-      if (response.success) {
-        setStats(response.dashboard);
-      }
+      const [statsRes, annRes] = await Promise.all([
+        getDashboardStats(tutorId),
+        getRecentAnnouncements(tutorId),
+      ]);
+      if (statsRes.success) setStats(statsRes.dashboard);
+      if (annRes.success) setRecentAnnouncements(annRes.announcements || []);
       setLoading(false);
     };
 
@@ -123,7 +128,11 @@ const TutorDashboard = () => {
 
           <div className="rounded-2xl border border-cyan-400/20 bg-[#041225]/80 p-5 shadow-[0_0_18px_rgba(34,211,238,0.18)] flex items-center justify-between">
             <h2 className="text-xl font-semibold">Quick Post Announcement</h2>
-            <button className="w-11 h-11 rounded-full bg-purple-500 flex items-center justify-center shadow-[0_0_18px_rgba(168,85,247,0.7)]">
+            <button
+              onClick={() => navigate("/tutor/announcements")}
+              className="w-11 h-11 rounded-full bg-purple-500 flex items-center justify-center shadow-[0_0_18px_rgba(168,85,247,0.7)] hover:bg-purple-400 transition"
+              title="Go to Announcements"
+            >
               <PenLine size={20} />
             </button>
           </div>
@@ -235,29 +244,41 @@ const TutorDashboard = () => {
             <div className="flex items-center gap-2 mb-4">
               <MessageCircle className="text-cyan-300" />
               <h2 className="text-xl font-semibold">
-                Recent Course Updates Feed
+                Recent Announcements
               </h2>
             </div>
 
-            <div className="flex gap-3 mb-4">
-              <input
-                type="text"
-                placeholder="Add update..."
-                className="flex-1 rounded-xl bg-slate-900/80 border border-slate-600 px-4 py-2 outline-none focus:border-cyan-300"
-              />
-              <button className="rounded-xl bg-blue-600 px-5 py-2 font-semibold hover:bg-blue-500">
-                Send
-              </button>
-            </div>
-
-            <div className="space-y-2 text-slate-200">
-              <p>Flexible</p>
-              <p>Prefered Exchange Types</p>
-              <p>Virtual/Video Call</p>
-              <p>In-Person with safety guidelines</p>
-              <p>Document Exchange</p>
-              <p>...</p>
-            </div>
+            {recentAnnouncements.length === 0 ? (
+              <div className="text-slate-500 text-sm py-4 text-center">
+                No announcements yet.
+                <button
+                  onClick={() => navigate("/tutor/announcements")}
+                  className="block mx-auto mt-2 text-purple-400 hover:text-purple-300 text-xs"
+                >
+                  Create your first announcement →
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentAnnouncements.map((ann) => (
+                  <div key={ann.announcement_id} className="border-b border-slate-700/50 pb-3">
+                    <p className="text-white text-sm font-medium">{ann.title}</p>
+                    {ann.course_title && (
+                      <p className="text-cyan-300 text-xs mt-0.5">{ann.course_title}</p>
+                    )}
+                    <p className="text-slate-500 text-xs mt-0.5">
+                      {ann.created_at ? new Date(ann.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}
+                    </p>
+                  </div>
+                ))}
+                <button
+                  onClick={() => navigate("/tutor/announcements")}
+                  className="text-purple-400 hover:text-purple-300 text-xs mt-1"
+                >
+                  View all announcements →
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -7,6 +7,7 @@ import {
   BarChart3,
   CalendarCheck,
   TrendingUp,
+  Megaphone,
 } from "lucide-react";
 
 const menuItems = [
@@ -17,6 +18,7 @@ const menuItems = [
   { name: "Create Quizzes", path: "/tutor/create-quiz", icon: FileQuestion },
   { name: "Analytics", path: "/tutor/analytics", icon: BarChart3 },
   { name: "Attendance", path: "/tutor/attendance", icon: CalendarCheck },
+  { name: "Announcements", path: "/tutor/announcements", icon: Megaphone },
 ];
 
 const TutorSidebar = () => {

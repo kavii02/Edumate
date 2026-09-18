@@ -21,7 +21,6 @@ body {
 .page-shell {
   position: relative;
   min-height: 100vh;
-  overflow: hidden;
   background: #020617;
 }
 

@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 
 import { saveTutorSession } from './services/authApiService'
 import AdminDashboard from './AdminManagement/AdminDashboard'
 import StudentDashboard from './StudentManagement/StudentDashboard'
 import TutorMain from './TutorManagement/TutorMain'
+import LandingPage from './LandingPage'
 
 import StudentRegistration from './StudentRegistration'
 import ForgotPasswordModal from './auth/ForgotPasswordModal'
@@ -20,6 +21,12 @@ export default function App() {
   })
   const [token, setToken] = useState(() => localStorage.getItem('edumate_student_token') || null)
 
+  // Show landing page by default when not logged in
+  const [showLanding, setShowLanding] = useState(() => {
+    // If already logged in or has a stored session, skip landing
+    return localStorage.getItem('edumate_loggedIn') !== 'true'
+  })
+
   const [email, setEmail] = useState(() => localStorage.getItem('edumate_email') || '')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -31,6 +38,8 @@ export default function App() {
   const [showRegistration, setShowRegistration] = useState(false)
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [timeoutMessage, setTimeoutMessage] = useState('')
+  const [loginSuccess, setLoginSuccess] = useState(false)
+  const loginSuccessTimerRef = useRef(null)
   const inactivityTimerRef = useRef(null)
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
@@ -38,8 +47,52 @@ export default function App() {
   useEffect(() => {
     const storedLoggedIn = localStorage.getItem('edumate_loggedIn') === 'true'
     const storedRole = localStorage.getItem('edumate_role')
+    const storedToken = localStorage.getItem('edumate_student_token')
 
-    if (storedLoggedIn && storedRole) {
+    // For Student sessions: validate token against backend before restoring session.
+    // This prevents stale localStorage (e.g. a previous user like Livini) from
+    // auto-logging in without a real database check.
+    if (storedLoggedIn && storedRole === 'Student' && storedToken) {
+      fetch(`${API_BASE_URL}/api/student/verify-token`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${storedToken}` }
+      })
+        .then(res => {
+          if (res.ok) {
+            return res.json().then(data => {
+              // Token valid — restore session with fresh student data from server
+              if (data.student) {
+                localStorage.setItem('edumate_student_obj', JSON.stringify(data.student))
+                setStudent(data.student)
+              }
+              setLoggedIn(true)
+              setRole('Student')
+            })
+          } else {
+            // Token invalid/expired — clear all student localStorage keys
+            console.warn('[Auth] Stored student token is invalid. Clearing session.')
+            ;[
+              'edumate_loggedIn', 'edumate_role', 'edumate_student_obj',
+              'edumate_student_token', 'edumate_student_id', 'edumate_student_name',
+              'edumate_fresh_login'
+            ].forEach(k => localStorage.removeItem(k))
+            setLoggedIn(false)
+            setRole(null)
+            setStudent(null)
+            setToken(null)
+            setShowLanding(true)
+          }
+        })
+        .catch(() => {
+          // Network error — allow cached session so app still works offline
+          setLoggedIn(true)
+          setRole('Student')
+        })
+      return
+    }
+
+    const hasAdminToken = storedRole !== 'Admin' || Boolean(localStorage.getItem('edumate_admin_token'))
+    if (storedLoggedIn && storedRole && hasAdminToken) {
       setLoggedIn(true)
       setRole(storedRole)
     }
@@ -163,10 +216,19 @@ export default function App() {
         localStorage.setItem('edumate_student_obj', JSON.stringify(studentObj))
         localStorage.setItem('edumate_student_token', studentToken)
         localStorage.setItem('edumate_role', 'Student')
+        localStorage.setItem('edumate_loggedIn', 'true')
+        // Flag so dashboard always redirects to /dashboard on fresh login
+        localStorage.setItem('edumate_fresh_login', 'true')
         setStudent(studentObj)
         setToken(studentToken)
-        setLoggedIn(true)
         setError('')
+        // Show success message before entering the dashboard
+        setLoginSuccess(true)
+        if (loginSuccessTimerRef.current) clearTimeout(loginSuccessTimerRef.current)
+        loginSuccessTimerRef.current = window.setTimeout(() => {
+          setLoginSuccess(false)
+          setLoggedIn(true)
+        }, 1800)
         return
       } catch (err) {
         setError('Unable to connect to the authentication server.')
@@ -238,6 +300,9 @@ export default function App() {
       }
 
       localStorage.setItem('edumate_loggedIn', 'true')
+      if (data.token) localStorage.setItem('edumate_admin_token', data.token)
+      localStorage.setItem('edumate_admin_level', String(data.admin?.admin_level || 2))
+      localStorage.setItem('edumate_admin_obj', JSON.stringify(data.admin || {}))
       setLoggedIn(true)
       setVerificationPending(false)
       setVerificationCode('')
@@ -279,6 +344,9 @@ export default function App() {
   }
 
   const handleLogout = () => {
+    // Clear any pending login success timer
+    if (loginSuccessTimerRef.current) clearTimeout(loginSuccessTimerRef.current)
+    setLoginSuccess(false)
     setLoggedIn(false)
     setRole(null)
     setEmail('')
@@ -290,6 +358,7 @@ export default function App() {
     setShowRegistration(false)
     setShowForgotPassword(false)
     setTimeoutMessage('')
+    setShowLanding(true)  // Go back to landing page on logout
 
     localStorage.removeItem('edumate_role')
     localStorage.removeItem('edumate_loggedIn')
@@ -301,7 +370,11 @@ export default function App() {
     localStorage.removeItem('edumate_student_name')
     localStorage.removeItem('edumate_tutor_id')
     localStorage.removeItem('edumate_tutor_name')
+    localStorage.removeItem('edumate_admin_token')
+    localStorage.removeItem('edumate_admin_level')
+    localStorage.removeItem('edumate_admin_obj')
     localStorage.removeItem('tutorSession')
+    localStorage.removeItem('edumate_fresh_login')
     setStudent(null)
     setToken(null)
   }
@@ -317,9 +390,97 @@ export default function App() {
     )
   }
 
+  // Show landing page when user is not logged in and hasn't clicked Login/Get Started
+  if (!loggedIn && showLanding) {
+    return <LandingPage onGetStarted={() => setShowLanding(false)} />
+  }
+
   return (
     <div className="page-shell">
       <div className="page-background" />
+
+      {/* ── Login success toast — on-brand Edumate style ── */}
+      {loginSuccess && (
+        <div style={{
+          position: 'fixed',
+          top: '28px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 99999,
+          background: 'rgba(10, 15, 35, 0.96)',
+          border: '1px solid rgba(139, 92, 246, 0.45)',
+          borderRadius: '20px',
+          padding: '0',
+          boxShadow: '0 8px 48px rgba(124, 58, 237, 0.32), 0 0 0 1px rgba(56,189,248,0.10)',
+          maxWidth: 'min(92vw, 440px)',
+          width: '440px',
+          backdropFilter: 'blur(18px)',
+          overflow: 'hidden',
+          animation: 'slideDownFadeIn 0.4s cubic-bezier(0.22,1,0.36,1)',
+          fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+        }}>
+          {/* Gradient accent bar at top */}
+          <div style={{
+            height: '3px',
+            background: 'linear-gradient(90deg, #38bdf8, #8b5cf6)',
+          }} />
+
+          {/* Card body */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            padding: '18px 22px 14px',
+          }}>
+            {/* Icon — Lucide CheckCircle path, in the system purple */}
+            <div style={{
+              flexShrink: 0,
+              width: '42px',
+              height: '42px',
+              borderRadius: '12px',
+              background: 'rgba(139, 92, 246, 0.16)',
+              border: '1px solid rgba(139, 92, 246, 0.28)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                stroke="url(#em-grad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <defs>
+                  <linearGradient id="em-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#38bdf8" />
+                    <stop offset="100%" stopColor="#8b5cf6" />
+                  </linearGradient>
+                </defs>
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+            </div>
+
+            {/* Text */}
+            <div>
+              <p style={{ margin: 0, color: '#f8fafc', fontWeight: 700, fontSize: '0.97rem', letterSpacing: '-0.01em' }}>
+                Login successful!
+              </p>
+              <p style={{ margin: '2px 0 0', color: '#c4b5fd', fontSize: '0.85rem', fontWeight: 500 }}>
+                Welcome back{student ? `, ${student.first_name}` : ''}! Taking you to your dashboard…
+              </p>
+            </div>
+          </div>
+
+          {/* Draining progress bar — drains over 1.8 s matching the timer */}
+          <div style={{ height: '3px', background: 'rgba(139,92,246,0.12)', margin: '0 22px 14px' }}>
+            <div style={{
+              height: '100%',
+              width: '100%',
+              background: 'linear-gradient(90deg, #38bdf8, #8b5cf6)',
+              borderRadius: '2px',
+              animation: 'drainProgress 1.8s linear forwards',
+            }} />
+          </div>
+        </div>
+      )}
+
       {timeoutMessage && (
         <div className="timeout-banner" style={{
           position: 'fixed',
@@ -385,7 +546,21 @@ export default function App() {
 
           {showRegistration && (
             <StudentRegistration
-              onRegistrationSuccess={() => setShowRegistration(false)}
+              onRegistrationSuccess={(studentData) => {
+                // Read the session data stored by the registration component
+                const storedObj = localStorage.getItem('edumate_student_obj')
+                const storedToken = localStorage.getItem('edumate_student_token')
+                try {
+                  const parsed = storedObj ? JSON.parse(storedObj) : studentData
+                  setStudent(parsed)
+                } catch {
+                  setStudent(studentData || null)
+                }
+                if (storedToken) setToken(storedToken)
+                setRole('Student')
+                setShowRegistration(false)
+                setLoggedIn(true)
+              }}
               onBackToLogin={() => setShowRegistration(false)}
             />
           )}

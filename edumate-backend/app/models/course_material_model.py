@@ -22,11 +22,17 @@ class CourseMaterial(db.Model):
             "course_id": self.course_id,
             "title": self.title,
             "type": self.material_type,
+            "material_type": self.material_type,
             "url": self.url,
             "size": self.file_size,
             "description": self.description,
+            "uploaded_at": self.created_at.isoformat() if self.created_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
+
+    @property
+    def uploaded_at(self):
+        return self.created_at
 
     def __repr__(self):
         return f"<CourseMaterial {self.title} ({self.material_type})>"

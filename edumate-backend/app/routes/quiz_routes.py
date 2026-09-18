@@ -1,10 +1,16 @@
-from flask import Blueprint, request, jsonify
+import os
+import tempfile
+
+from flask import Blueprint, request, jsonify, current_app
 from .. import db
 from ..models.quiz_model import Quiz, QuizQuestion
 from ..models.quiz_result_model import QuizResult
 from ..models.quiz_attempt_model import QuizAttempt
 from ..models.student_model import Student
 from ..models.course_model import Course
+from ..services.ai_quiz_service import generate_quiz_with_ai
+from ..services.pdf_service import extract_text_from_pdf
+from ..utils.student_auth import require_student
 
 quiz_bp = Blueprint("quiz", __name__)
 
@@ -146,17 +152,15 @@ def get_quiz_with_answers(quiz_id):
 
 
 @quiz_bp.route("/submit", methods=["POST"])
-def submit_quiz():
+@require_student
+def submit_quiz(authenticated_student_id):
     data = request.get_json() or {}
-    if not data.get("student_id"):
-        return jsonify({"success": False, "message": "Student ID is required"}), 400
     if not data.get("quiz_id"):
         return jsonify({"success": False, "message": "Quiz ID is required"}), 400
     if not data.get("answers"):
         return jsonify({"success": False, "message": "Answers are required"}), 400
 
-    if not Student.query.get(data['student_id']):
-        return jsonify({"success": False, "message": "Student not found"}), 404
+    data["student_id"] = authenticated_student_id
     quiz = Quiz.query.get(data['quiz_id'])
     if not quiz:
         return jsonify({"success": False, "message": "Quiz not found"}), 404
@@ -262,8 +266,48 @@ def submit_quiz():
         return jsonify({"success": False, "message": f"Quiz submission failed: {str(e)}"}), 500
 
 
+@quiz_bp.route("/generate-from-pdf", methods=["POST"])
+def generate_quiz_from_pdf():
+    uploaded_file = request.files.get("file")
+    if not uploaded_file or not uploaded_file.filename:
+        return jsonify({"success": False, "message": "A PDF file is required."}), 400
+
+    if not uploaded_file.filename.lower().endswith(".pdf"):
+        return jsonify({"success": False, "message": "Only PDF files are supported."}), 400
+
+    number_of_questions = request.form.get("number_of_questions", type=int) or 5
+    difficulty = request.form.get("difficulty", "Medium") or "Medium"
+
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+            uploaded_file.save(tmp.name)
+            tmp_path = tmp.name
+
+        try:
+            pdf_text = extract_text_from_pdf(tmp_path)
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
+        if not pdf_text or not pdf_text.strip():
+            return jsonify({"success": False, "message": "No readable text found in the uploaded PDF."}), 400
+
+        result = generate_quiz_with_ai(pdf_text, number_of_questions=number_of_questions, difficulty=difficulty)
+        return jsonify({
+            "success": True,
+            "title": result.get("title", "AI Generated Quiz"),
+            "questions": result.get("questions", []),
+            "message": "Quiz generated successfully from PDF."
+        }), 200
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"Failed to generate quiz from PDF: {str(exc)}"}), 500
+
+
 @quiz_bp.route("/history/<int:student_id>", methods=["GET"])
-def get_quiz_history(student_id):
+@require_student
+def get_quiz_history(student_id, authenticated_student_id):
+    if student_id != authenticated_student_id:
+        return jsonify({"success": False, "message": "You can only view your own quiz history"}), 403
     if not Student.query.get(student_id):
         return jsonify({"success": False, "message": "Student not found"}), 404
     try:
@@ -274,7 +318,10 @@ def get_quiz_history(student_id):
 
 
 @quiz_bp.route("/analytics/<int:student_id>", methods=["GET"])
-def get_student_analytics(student_id):
+@require_student
+def get_student_analytics(student_id, authenticated_student_id):
+    if student_id != authenticated_student_id:
+        return jsonify({"success": False, "message": "You can only view your own analytics"}), 403
     if not Student.query.get(student_id):
         return jsonify({"success": False, "message": "Student not found"}), 404
     try:
@@ -298,15 +345,21 @@ def get_student_analytics(student_id):
 
 
 @quiz_bp.route("/result/<int:result_id>", methods=["GET"])
-def get_quiz_result(result_id):
+@require_student
+def get_quiz_result(result_id, authenticated_student_id):
     result = QuizResult.query.get(result_id)
     if not result:
         return jsonify({"success": False, "message": "Result not found"}), 404
+    if result.student_id != authenticated_student_id:
+        return jsonify({"success": False, "message": "You can only view your own quiz result"}), 403
     return jsonify({"success": True, "result": result.to_dict()}), 200
 
 
 @quiz_bp.route("/weak-topics/<int:student_id>", methods=["GET"])
-def get_weak_topics(student_id):
+@require_student
+def get_weak_topics(student_id, authenticated_student_id):
+    if student_id != authenticated_student_id:
+        return jsonify({"success": False, "message": "You can only view your own weak topics"}), 403
     if not Student.query.get(student_id):
         return jsonify({"success": False, "message": "Student not found"}), 404
     try:

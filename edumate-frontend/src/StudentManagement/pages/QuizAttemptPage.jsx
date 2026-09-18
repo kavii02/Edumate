@@ -75,7 +75,11 @@ export default function QuizAttemptPage({
         }
       })
 
-      const studentId = student?.student_id || parseInt(localStorage.getItem('edumate_student_id') || '1')
+      const studentId = student?.student_id
+      if (!studentId) {
+        triggerToast?.('Your student session is unavailable. Please log in again.')
+        return
+      }
       const response = await fetch('http://localhost:5000/api/quiz/submit', {
         method: 'POST',
         headers: {

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import '../index.css'
-
-const API_BASE_URL = 'http://localhost:5000'
+import { adminFetch, API_BASE_URL } from './adminApi'
 
 export default function SystemMonitoring() {
   const [loginLogs, setLoginLogs] = useState([])
@@ -23,9 +22,9 @@ export default function SystemMonitoring() {
       setLoading(true)
 
       const [statsRes, logsRes, activityRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/admin/monitoring-stats`),
-        fetch(`${API_BASE_URL}/api/admin/login-logs`),
-        fetch(`${API_BASE_URL}/api/admin/system-logs`)
+        adminFetch(`${API_BASE_URL}/api/admin/monitoring-stats`),
+        adminFetch(`${API_BASE_URL}/api/admin/login-logs`),
+        adminFetch(`${API_BASE_URL}/api/admin/system-logs`)
       ])
 
       if (statsRes.ok) {

@@ -9,6 +9,7 @@ from .. import db
 from ..models import Admin, AdminVerificationCode
 from ..services.email_service import send_verification_email
 from ..services.logging_service import log_login as log_system_login, log_multiple_failed_logins
+from ..utils.admin_auth import create_admin_token
 
 
 auth_bp = Blueprint("auth", __name__)
@@ -132,7 +133,8 @@ def admin_login():
         "admin": {
             "id": admin.admin_id,
             "name": admin.full_name,
-            "email": admin.email
+            "email": admin.email,
+            "admin_level": admin.admin_level
         }
     }), 200
 
@@ -180,10 +182,12 @@ def verify_code():
     return jsonify({
         "success": True,
         "message": "Verification successful.",
+        "token": create_admin_token(admin.admin_id, admin.admin_level),
         "admin": {
             "id": admin.admin_id,
             "name": admin.full_name,
-            "email": admin.email
+            "email": admin.email,
+            "admin_level": admin.admin_level
         }
     }), 200
 

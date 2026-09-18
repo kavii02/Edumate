@@ -68,6 +68,17 @@ function CourseDetailsRoute({ courses, setSelectedClassroomCourse, ...props }) {
 export default function StudentDashboard({ onLogout, student, token }) {
   const navigate = useNavigate()
   const location = useLocation()
+
+  // On every fresh login, always redirect to /dashboard regardless of previous URL
+  useEffect(() => {
+    if (localStorage.getItem('edumate_fresh_login') === 'true') {
+      localStorage.removeItem('edumate_fresh_login')
+      if (location.pathname !== '/dashboard') {
+        navigate('/dashboard', { replace: true })
+      }
+    }
+  }, [])
+
   const [communityTab, setCommunityTab] = useState('peers')
   const [selectedClassroomCourse, setSelectedClassroomCourse] = useState('')
   const [plannerTasks, setPlannerTasks] = useState([])
@@ -89,11 +100,7 @@ export default function StudentDashboard({ onLogout, student, token }) {
   const [confusionFeedbacks, setConfusionFeedbacks] = useState({})
   const [showToast, setShowToast] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
-  const [notifications, setNotifications] = useState([
-    { id: 1, text: 'New Quiz 03 has been scheduled by Mr. U.E. Ranasooriya.', unread: true },
-    { id: 2, text: 'Lecture Notes on Python Networking are now available to download.', unread: true },
-    { id: 3, text: 'Tutor G.G.H.H. Prabodhana approved your Skill Barter Request.', unread: false }
-  ])
+  const [notifications, setNotifications] = useState([])
   const [studentProfile, setStudentProfile] = useState({
     name: student ? `${student.first_name} ${student.last_name}` : 'Student',
     indexNo: student ? `ID-${student.student_id}` : '—',
@@ -128,6 +135,24 @@ export default function StudentDashboard({ onLogout, student, token }) {
       avatarSeed: student.first_name || 'Student'
     }))
   }, [student])
+
+  useEffect(() => {
+    if (!student?.student_id || !token) return
+    const headers = { Authorization: `Bearer ${token}` }
+    Promise.all([
+      fetch('http://localhost:5000/api/student-activity/notifications', { headers }).then((res) => res.ok ? res.json() : null),
+      fetch('http://localhost:5000/api/student-activity/lesson-feedback', { headers }).then((res) => res.ok ? res.json() : null)
+    ]).then(([notificationData, feedbackData]) => {
+      if (notificationData?.success) setNotifications(notificationData.notifications || [])
+      if (feedbackData?.success) {
+        const feedbackMap = {}
+        ;(feedbackData.feedback || []).forEach((entry) => {
+          feedbackMap[String(entry.course_id)] = entry.feedback_level
+        })
+        setConfusionFeedbacks(feedbackMap)
+      }
+    }).catch(() => {})
+  }, [student?.student_id, token])
 
   useEffect(() => {
     if (quizHistory.length === 0) return
@@ -722,8 +747,19 @@ export default function StudentDashboard({ onLogout, student, token }) {
     } catch { triggerToast('Unable to connect to server.') }
   }
 
-  const handleConfusionLevelSubmit = (courseId, level) => {
-    setConfusionFeedbacks({ ...confusionFeedbacks, [courseId]: level })
+  const handleConfusionLevelSubmit = async (courseId, level) => {
+    if (!token || !student?.student_id) return
+    const response = await fetch('http://localhost:5000/api/student-activity/lesson-feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ course_id: Number(courseId), feedback_level: level })
+    })
+    const data = await response.json()
+    if (!response.ok) {
+      triggerToast(data.message || 'Unable to save lesson feedback.')
+      return
+    }
+    setConfusionFeedbacks((previous) => ({ ...previous, [courseId]: level }))
     let msg = `Confusion updated to ${level}. `
     if (level === 'Confused') {
       msg += 'AI logic updated and generated focus recommendations.'
@@ -1219,9 +1255,22 @@ export default function StudentDashboard({ onLogout, student, token }) {
   const notificationsPage = (
     <Notifications
       notifications={notifications}
-      markRead={(id) => setNotifications(notifications.map((n) => n.id === id ? { ...n, unread: false } : n))}
-      clearNotification={(id) => setNotifications(notifications.filter((n) => n.id !== id))}
-      clearAll={() => setNotifications([])}
+      markRead={async (id) => {
+        if (token && typeof id === 'number') {
+          await fetch(`http://localhost:5000/api/student-activity/notifications/${id}/read`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+        }
+        setNotifications((previous) => previous.map((n) => n.id === id ? { ...n, unread: false } : n))
+      }}
+      clearNotification={async (id) => {
+        if (token && typeof id === 'number') {
+          await fetch(`http://localhost:5000/api/student-activity/notifications/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+        }
+        setNotifications((previous) => previous.filter((n) => n.id !== id))
+      }}
+      clearAll={async () => {
+        if (token) await fetch('http://localhost:5000/api/student-activity/notifications', { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+        setNotifications([])
+      }}
     />
   )
 

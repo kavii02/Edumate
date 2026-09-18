@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import '../index.css'
 import { Trash2, CheckCircle, Download, FileText, Filter, Search, RefreshCw } from 'lucide-react'
-
-const API_BASE_URL = 'http://localhost:5000'
+import { adminFetch, API_BASE_URL } from './adminApi'
 
 const REASON_CLASSES = {
   'Offensive Content': 'reason-offensive',
@@ -13,7 +12,7 @@ const REASON_CLASSES = {
   'Fake Profile':      'reason-impersonation',
 }
 
-export default function UserReports() {
+export default function UserReports({ isSuperAdmin = false }) {
   const [reports, setReports]         = useState([])
   const [loading, setLoading]         = useState(true)
   const [search, setSearch]           = useState('')
@@ -25,7 +24,7 @@ export default function UserReports() {
   const fetchReports = async () => {
     try {
       setLoading(true)
-      const res  = await fetch(`${API_BASE_URL}/api/admin/user-reports`)
+      const res  = await adminFetch(`${API_BASE_URL}/api/admin/user-reports`)
       const data = await res.json()
       if (res.ok) setReports(data)
     } catch (err) {
@@ -37,7 +36,7 @@ export default function UserReports() {
 
   const markAsResolved = async (id) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/admin/user-reports/${id}/resolve`, { method: 'PUT' })
+      const res = await adminFetch(`${API_BASE_URL}/api/admin/user-reports/${id}/resolve`, { method: 'PUT' })
       if (res.ok) setReports(prev => prev.map(r => r.id === id ? { ...r, status: 'Resolved' } : r))
     } catch (err) { console.error('Resolve error:', err) }
   }
@@ -45,7 +44,7 @@ export default function UserReports() {
   const deleteReport = async (id) => {
     if (!window.confirm('Delete this report permanently?')) return
     try {
-      const res = await fetch(`${API_BASE_URL}/api/admin/user-reports/${id}`, { method: 'DELETE' })
+      const res = await adminFetch(`${API_BASE_URL}/api/admin/user-reports/${id}`, { method: 'DELETE' })
       if (res.ok) setReports(prev => prev.filter(r => r.id !== id))
     } catch (err) { console.error('Delete error:', err) }
   }
@@ -245,7 +244,7 @@ export default function UserReports() {
                 </div>
 
                 <div className="report-actions">
-                  {report.status === 'Pending' && (
+                  {isSuperAdmin && report.status === 'Pending' && (
                     <button
                       type="button"
                       className="action-button resolve-button"
@@ -254,13 +253,13 @@ export default function UserReports() {
                       <CheckCircle size={16} /> Resolve
                     </button>
                   )}
-                  <button
+                  {isSuperAdmin && <button
                     type="button"
                     className="action-button delete-button"
                     onClick={() => deleteReport(report.id)}
                   >
                     <Trash2 size={16} /> Delete
-                  </button>
+                  </button>}
                 </div>
               </div>
             </div>

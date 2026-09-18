@@ -81,19 +81,27 @@ export default function StudentRegistration({ onRegistrationSuccess, onBackToLog
         return
       }
 
-      setSuccess('Registration successful! Check your email for the verification code.')
-      setVerificationEmail(formData.email)
-      setVerificationMessage(data.debugToken
-        ? `Email sending is not configured. Use this code to verify: ${data.debugToken}`
-        : 'A verification code has been sent to your email address.'
-      )
-      setShowVerificationModal(true)
-      setVerificationError('')
-      setVerificationDigits(Array(CODE_LENGTH).fill(''))
+      // Registration succeeded — student is now in the database.
+      // Store their session exactly as login does, then auto-login.
+      if (data.student && data.token) {
+        localStorage.setItem('edumate_student_id', String(data.student.student_id))
+        localStorage.setItem('edumate_student_name', `${data.student.first_name} ${data.student.last_name}`)
+        localStorage.setItem('edumate_student_obj', JSON.stringify(data.student))
+        localStorage.setItem('edumate_student_token', data.token)
+        localStorage.setItem('edumate_role', 'Student')
+        localStorage.setItem('edumate_loggedIn', 'true')
+      }
+
+      setSuccess('Account created successfully! Taking you to your dashboard…')
+      setTimeout(() => {
+        onRegistrationSuccess?.(data.student || { email: formData.email, firstName: formData.firstName, lastName: formData.lastName })
+      }, 800)
+
     } catch (err) {
       setError(`Connection Error: ${err.message || 'Unable to connect to the server'}. Make sure the backend is running on http://localhost:5000`)
     }
   }
+
 
   const handleVerifyEmail = async () => {
     const code = verificationDigits.join('').trim()
@@ -309,7 +317,35 @@ export default function StudentRegistration({ onRegistrationSuccess, onBackToLog
                 </label>
               </div>
 
-              {verificationMessage && <p className="text-slate-200 text-sm">{verificationMessage}</p>}
+              {verificationMessage && (
+                verificationMessage.includes('Use this code') || verificationMessage.includes('use this code') ? (
+                  <div style={{
+                    background: 'rgba(56,189,248,0.08)',
+                    border: '1px solid rgba(56,189,248,0.35)',
+                    borderRadius: 12,
+                    padding: '14px 16px',
+                    marginBottom: 4,
+                  }}>
+                    <p style={{ margin: '0 0 6px', color: '#7dd3fc', fontWeight: 700, fontSize: 13 }}>
+                      📧 Email not configured — use this code to verify:
+                    </p>
+                    <p style={{
+                      margin: 0,
+                      fontFamily: 'monospace',
+                      fontSize: 28,
+                      fontWeight: 800,
+                      letterSpacing: '0.25em',
+                      color: '#f8fafc',
+                      textAlign: 'center',
+                      padding: '6px 0',
+                    }}>
+                      {verificationMessage.split(': ').pop()}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-slate-200 text-sm">{verificationMessage}</p>
+                )
+              )}
               {verificationError && <p className="text-red-400 text-sm">{verificationError}</p>}
 
               <div className="flex flex-col gap-3 sm:flex-row">

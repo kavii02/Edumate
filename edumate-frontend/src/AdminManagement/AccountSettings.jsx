@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import '../index.css'
 import { User, Lock, Save, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react'
-
-const API_BASE_URL = 'http://localhost:5000'
+import { adminFetch, API_BASE_URL } from './adminApi'
 
 export default function AccountSettings() {
   const adminEmail = localStorage.getItem('edumate_email') || ''
@@ -30,7 +29,7 @@ export default function AccountSettings() {
     if (!adminEmail) { setLoadingProfile(false); return }
     try {
       setLoadingProfile(true)
-      const res  = await fetch(`${API_BASE_URL}/api/admin/profile?email=${encodeURIComponent(adminEmail)}`)
+      const res  = await adminFetch(`${API_BASE_URL}/api/admin/profile`)
       const data = await res.json()
       if (res.ok) {
         setProfile(data)
@@ -49,10 +48,10 @@ export default function AccountSettings() {
     setSavingProfile(true)
     setProfileMsg(null)
     try {
-      const res  = await fetch(`${API_BASE_URL}/api/admin/profile`, {
+      const res  = await adminFetch(`${API_BASE_URL}/api/admin/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: adminEmail, full_name: editName.trim() })
+        body: JSON.stringify({ full_name: editName.trim() })
       })
       const data = await res.json()
       if (res.ok) {
@@ -82,10 +81,10 @@ export default function AccountSettings() {
     }
     setSavingPw(true)
     try {
-      const res  = await fetch(`${API_BASE_URL}/api/admin/change-password`, {
+      const res  = await adminFetch(`${API_BASE_URL}/api/admin/change-password`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: adminEmail, current_password: currentPw, new_password: newPw })
+        body: JSON.stringify({ current_password: currentPw, new_password: newPw })
       })
       const data = await res.json()
       if (res.ok) {

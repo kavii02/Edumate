@@ -14,3 +14,4 @@ from .study_planner_model import StudyPlanner
 from .attendance_model import AttendanceRecord
 from .course_material_model import CourseMaterial
 from .system_log_model import SystemLog
+from .lesson_feedback_model import LessonFeedback

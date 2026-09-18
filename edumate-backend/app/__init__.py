@@ -28,7 +28,7 @@ def create_app():
         f"mysql+pymysql://{os.getenv('MYSQL_USER','root')}:"
         f"{os.getenv('MYSQL_PASSWORD','')}@"
         f"{os.getenv('MYSQL_HOST','localhost')}/"
-        f"{os.getenv('MYSQL_DB','edumate-db')}"
+        f"{os.getenv('MYSQL_DB','edumate_db')}"
     )
 
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -99,6 +99,8 @@ def create_app():
     from .routes.study_planner_routes import planner_bp
     from .routes.attendance_routes import attendance_bp
     from .routes.course_material_routes import material_bp
+    from .routes.ai_routes import ai_bp
+    from .routes.student_activity_routes import student_activity_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(skill_bp, url_prefix="/api/skills")
@@ -115,6 +117,8 @@ def create_app():
     app.register_blueprint(planner_bp, url_prefix="/api/planner")
     app.register_blueprint(attendance_bp, url_prefix="/api/attendance")
     app.register_blueprint(material_bp, url_prefix="/api/materials")
+    app.register_blueprint(ai_bp, url_prefix="/api/ai")
+    app.register_blueprint(student_activity_bp, url_prefix="/api/student-activity")
 
     # ==========================
     # Create Tables

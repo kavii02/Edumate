@@ -20,13 +20,15 @@ import SystemMonitoring from './SystemMonitoring'
 import UserReports from './UserReports'
 import SystemLogs from './SystemLogs'
 import AccountSettings from './AccountSettings'
-
-const API_BASE_URL = 'http://localhost:5000'
+import MaterialMonitoring from './MaterialMonitoring'
+import AdminManagement from './AdminManagement'
+import { adminFetch, API_BASE_URL } from './adminApi'
 
 const navItems = [
   { name: 'Dashboard', icon: <LayoutGrid size={18} /> },
   { name: 'User Management', icon: <Users size={18} /> },
   { name: 'Course Approval', icon: <BookOpen size={18} /> },
+  { name: 'Learning Materials', icon: <FileText size={18} /> },
   { name: 'User Reports', icon: <Mail size={18} /> },
   { name: 'System Monitoring', icon: <Activity size={18} /> },
   { name: 'System Logs', icon: <FileText size={18} /> },
@@ -46,6 +48,17 @@ export default function AdminDashboard({ onLogout }) {
 
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
+  let admin = {}
+  try {
+    admin = JSON.parse(localStorage.getItem('edumate_admin_obj') || '{}')
+  } catch {
+    admin = {}
+  }
+  const adminLevel = Number(admin.admin_level || localStorage.getItem('edumate_admin_level') || 2)
+  const isSuperAdmin = adminLevel === 1
+  const visibleNavItems = isSuperAdmin
+    ? [...navItems.slice(0, 1), { name: 'Admin Management', icon: <Users size={18} /> }, ...navItems.slice(1)]
+    : navItems.filter((item) => !['Course Approval', 'Account Settings'].includes(item.name))
 
   const pageTitle = activeTab === 'User Management' ? '' : activeTab
 
@@ -57,14 +70,14 @@ export default function AdminDashboard({ onLogout }) {
     try {
       setLoading(true)
 
-      const summaryResponse = await fetch(`${API_BASE_URL}/api/admin/dashboard-summary`)
+      const summaryResponse = await adminFetch(`${API_BASE_URL}/api/admin/dashboard-summary`)
       const summaryData = await summaryResponse.json()
 
       if (summaryResponse.ok) {
         setSummary(summaryData)
       }
 
-     const logsResponse = await fetch(`${API_BASE_URL}/api/admin/login-logs`)
+    const logsResponse = await adminFetch(`${API_BASE_URL}/api/admin/login-logs`)
       const logsData = await logsResponse.json()
 
       if (logsResponse.ok) {
@@ -93,7 +106,7 @@ export default function AdminDashboard({ onLogout }) {
         </div>
 
         <nav className="sidebar-nav">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <button
               key={item.name}
               type="button"
@@ -128,7 +141,7 @@ export default function AdminDashboard({ onLogout }) {
 
             <button className="profile-pill" type="button">
               <UserCheck size={16} />
-              Admin
+              {isSuperAdmin ? 'Super Admin' : 'Limited Admin'}
               <ChevronDown size={16} />
             </button>
 
@@ -138,12 +151,16 @@ export default function AdminDashboard({ onLogout }) {
           </div>
         </header>
 
-        {activeTab === 'User Management' ? (
-          <UserManagement />
+        {activeTab === 'Admin Management' ? (
+          <AdminManagement />
+        ) : activeTab === 'User Management' ? (
+          <UserManagement isSuperAdmin={isSuperAdmin} />
         ) : activeTab === 'Course Approval' ? (
-          <CourseApproval />
+          <CourseApproval isSuperAdmin={isSuperAdmin} />
+        ) : activeTab === 'Learning Materials' ? (
+          <MaterialMonitoring isSuperAdmin={isSuperAdmin} />
         ) : activeTab === 'User Reports' ? (
-          <UserReports />
+          <UserReports isSuperAdmin={isSuperAdmin} />
         ) : activeTab === 'System Monitoring' ? (
           <SystemMonitoring />
         ) : activeTab === 'System Logs' ? (

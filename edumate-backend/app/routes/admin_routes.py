@@ -7,12 +7,15 @@ from ..services.logging_service import (
     log_course_rejection,
     log_user_deletion
 )
+from ..utils.admin_auth import require_admin, require_super_admin
+from ..models.admin import Admin
 
 admin_bp = Blueprint("admin", __name__)
 
 
 @admin_bp.route("/dashboard-summary", methods=["GET"])
-def dashboard_summary():
+@require_admin
+def dashboard_summary(authenticated_admin_id):
     total_students = db.session.execute(text("SELECT COUNT(*) FROM students")).scalar()
     total_tutors = db.session.execute(text("SELECT COUNT(*) FROM tutors")).scalar()
     total_courses = db.session.execute(text("SELECT COUNT(*) FROM courses")).scalar()
@@ -33,7 +36,8 @@ def dashboard_summary():
 
 
 @admin_bp.route("/users", methods=["GET"])
-def get_users():
+@require_admin
+def get_users(authenticated_admin_id):
     students = db.session.execute(text("""
         SELECT 
             student_id AS id,
@@ -59,7 +63,7 @@ def get_users():
             NULL AS al_stream,
             NULL AS grade_level,
             NULL AS rating,
-            NULL AS specialization
+            specialization
         FROM tutors
     """)).mappings().all()
 
@@ -68,7 +72,8 @@ def get_users():
 
 
 @admin_bp.route("/users/student/<int:student_id>", methods=["DELETE"])
-def delete_student(student_id):
+@require_super_admin
+def delete_student(student_id, authenticated_admin_id, authenticated_admin):
     try:
         # Get student details before deletion
         student = db.session.execute(
@@ -87,8 +92,9 @@ def delete_student(student_id):
         db.session.commit()
         
         # Get admin info
-        admin_email = request.headers.get('X-Admin-Email', 'admin@system.com')
-        admin_name = request.headers.get('X-Admin-Name', 'Admin')
+        admin = db.session.execute(text("SELECT email, full_name FROM admins WHERE admin_id = :id"), {"id": authenticated_admin_id}).fetchone()
+        admin_email = admin.email
+        admin_name = admin.full_name
         student_name = f"{student.first_name} {student.last_name}"
         
         # Log the deletion
@@ -101,7 +107,8 @@ def delete_student(student_id):
 
 
 @admin_bp.route("/users/tutor/<int:tutor_id>", methods=["DELETE"])
-def delete_tutor(tutor_id):
+@require_super_admin
+def delete_tutor(tutor_id, authenticated_admin_id, authenticated_admin):
     try:
         # Get tutor details before deletion
         tutor = db.session.execute(
@@ -120,8 +127,9 @@ def delete_tutor(tutor_id):
         db.session.commit()
         
         # Get admin info
-        admin_email = request.headers.get('X-Admin-Email', 'admin@system.com')
-        admin_name = request.headers.get('X-Admin-Name', 'Admin')
+        admin = db.session.execute(text("SELECT email, full_name FROM admins WHERE admin_id = :id"), {"id": authenticated_admin_id}).fetchone()
+        admin_email = admin.email
+        admin_name = admin.full_name
         tutor_name = f"{tutor.first_name} {tutor.last_name}"
         
         # Log the deletion
@@ -134,7 +142,8 @@ def delete_tutor(tutor_id):
 
 
 @admin_bp.route("/courses", methods=["GET"])
-def get_courses():
+@require_admin
+def get_courses(authenticated_admin_id):
     courses = db.session.execute(text("""
         SELECT
             c.course_id AS id,
@@ -153,7 +162,8 @@ def get_courses():
 
 
 @admin_bp.route("/courses/pending", methods=["GET"])
-def get_pending_courses():
+@require_admin
+def get_pending_courses(authenticated_admin_id):
     courses = db.session.execute(text("""
         SELECT
             c.course_id AS id,
@@ -172,28 +182,77 @@ def get_pending_courses():
     return jsonify([dict(course) for course in courses]), 200
 
 
+@admin_bp.route("/materials", methods=["GET"])
+@require_admin
+def get_materials(authenticated_admin_id):
+    materials = db.session.execute(text("""
+         SELECT cm.material_id AS id, cm.title, cm.material_type, cm.file_path,
+             cm.uploaded_at, c.course_id, c.course_title AS course,
+             CONCAT(t.first_name, ' ', t.last_name) AS tutor,
+             'Uploaded material' AS source
+        FROM course_materials cm
+        LEFT JOIN courses c ON cm.course_id = c.course_id
+        LEFT JOIN tutors t ON c.tutor_id = t.tutor_id
+         UNION ALL
+         SELECT l.lesson_id AS id, l.lesson_title AS title, 'Lesson' AS material_type,
+             l.lesson_file AS file_path, l.created_at AS uploaded_at,
+             c.course_id, c.course_title AS course,
+             CONCAT(t.first_name, ' ', t.last_name) AS tutor,
+             'Lesson content' AS source
+         FROM lessons l
+         LEFT JOIN courses c ON l.course_id = c.course_id
+         LEFT JOIN tutors t ON c.tutor_id = t.tutor_id
+         ORDER BY uploaded_at DESC, id DESC
+    """)).mappings().all()
+    return jsonify([dict(material) for material in materials]), 200
+
+
+@admin_bp.route("/materials/<int:material_id>", methods=["DELETE"])
+@require_super_admin
+def delete_material(material_id, authenticated_admin_id, authenticated_admin):
+    material = db.session.execute(
+        text("SELECT material_id FROM course_materials WHERE material_id = :id"),
+        {"id": material_id},
+    ).first()
+    if not material:
+        return jsonify({"message": "Material not found"}), 404
+    db.session.execute(
+        text("DELETE FROM course_materials WHERE material_id = :id"),
+        {"id": material_id},
+    )
+    db.session.commit()
+    return jsonify({"message": "Material deleted successfully"}), 200
+
+
 @admin_bp.route("/courses/<int:course_id>/approve", methods=["PUT"])
-def approve_course(course_id):
+@require_super_admin
+def approve_course(course_id, authenticated_admin_id, authenticated_admin):
     try:
         # Get course details
         course = db.session.execute(
-            text("SELECT c.course_title, c.tutor_id FROM courses c WHERE c.course_id = :course_id"),
+            text("SELECT c.course_title, c.tutor_id, c.status FROM courses c WHERE c.course_id = :course_id"),
             {"course_id": course_id}
         ).fetchone()
         
         if not course:
             return jsonify({"message": "Course not found"}), 404
+        if course.status != "Pending":
+            return jsonify({"message": "Only pending courses can be approved"}), 409
         
         # Update course status
-        db.session.execute(
-            text("UPDATE courses SET status = 'Approved' WHERE course_id = :course_id"),
+        result = db.session.execute(
+            text("UPDATE courses SET status = 'Approved' WHERE course_id = :course_id AND status = 'Pending'"),
             {"course_id": course_id}
         )
+        if result.rowcount == 0:
+            db.session.rollback()
+            return jsonify({"message": "Only pending courses can be approved"}), 409
         db.session.commit()
         
         # Get admin info from request (you can get this from session or header)
-        admin_email = request.headers.get('X-Admin-Email', 'admin@system.com')
-        admin_name = request.headers.get('X-Admin-Name', 'Admin')
+        admin = db.session.execute(text("SELECT email, full_name FROM admins WHERE admin_id = :id"), {"id": authenticated_admin_id}).fetchone()
+        admin_email = admin.email
+        admin_name = admin.full_name
         
         # Log the approval
         log_course_approval(course.course_title, admin_email, admin_name)
@@ -205,30 +264,34 @@ def approve_course(course_id):
 
 
 @admin_bp.route("/courses/<int:course_id>/reject", methods=["PUT"])
-def reject_course(course_id):
+@require_super_admin
+def reject_course(course_id, authenticated_admin_id, authenticated_admin):
     try:
         data = request.get_json() or {}
         reason = data.get('reason', '')
         
         # Get course details
         course = db.session.execute(
-            text("SELECT c.course_title FROM courses c WHERE c.course_id = :course_id"),
+            text("SELECT c.course_title, c.status FROM courses c WHERE c.course_id = :course_id"),
             {"course_id": course_id}
         ).fetchone()
         
         if not course:
             return jsonify({"message": "Course not found"}), 404
+        if course.status != "Pending":
+            return jsonify({"message": "Only pending courses can be rejected"}), 409
         
         # Update course status
         db.session.execute(
-            text("UPDATE courses SET status = 'Rejected' WHERE course_id = :course_id"),
+            text("UPDATE courses SET status = 'Rejected' WHERE course_id = :course_id AND status = 'Pending'"),
             {"course_id": course_id}
         )
         db.session.commit()
         
         # Get admin info from request
-        admin_email = request.headers.get('X-Admin-Email', 'admin@system.com')
-        admin_name = request.headers.get('X-Admin-Name', 'Admin')
+        admin = db.session.execute(text("SELECT email, full_name FROM admins WHERE admin_id = :id"), {"id": authenticated_admin_id}).fetchone()
+        admin_email = admin.email
+        admin_name = admin.full_name
         
         # Log the rejection
         log_course_rejection(course.course_title, admin_email, admin_name, reason)
@@ -240,7 +303,8 @@ def reject_course(course_id):
 
 
 @admin_bp.route("/login-logs", methods=["GET"])
-def get_login_logs():
+@require_admin
+def get_login_logs(authenticated_admin_id):
     logs = db.session.execute(text("""
         SELECT
             log_id AS id,
@@ -258,7 +322,8 @@ def get_login_logs():
 
 
 @admin_bp.route("/system-logs", methods=["GET"])
-def get_system_logs():
+@require_admin
+def get_system_logs(authenticated_admin_id):
     from ..models.system_log_model import SystemLog
     
     logs = SystemLog.query.order_by(SystemLog.created_at.desc()).all()
@@ -277,7 +342,8 @@ def get_system_logs():
 
 
 @admin_bp.route("/user-reports", methods=["GET"])
-def get_user_reports():
+@require_admin
+def get_user_reports(authenticated_admin_id):
     reports = db.session.execute(text("""
         SELECT
             r.report_id AS id,
@@ -298,7 +364,10 @@ def get_user_reports():
 
 
 @admin_bp.route("/user-reports/<int:report_id>/resolve", methods=["PUT"])
-def resolve_report(report_id):
+@require_super_admin
+def resolve_report(report_id, authenticated_admin_id, authenticated_admin):
+    if not db.session.execute(text("SELECT 1 FROM user_reports WHERE report_id = :id"), {"id": report_id}).first():
+        return jsonify({"message": "Report not found"}), 404
     db.session.execute(
         text("UPDATE user_reports SET status = 'Resolved' WHERE report_id = :report_id"),
         {"report_id": report_id}
@@ -308,7 +377,10 @@ def resolve_report(report_id):
 
 
 @admin_bp.route("/user-reports/<int:report_id>", methods=["DELETE"])
-def delete_report(report_id):
+@require_super_admin
+def delete_report(report_id, authenticated_admin_id, authenticated_admin):
+    if not db.session.execute(text("SELECT 1 FROM user_reports WHERE report_id = :id"), {"id": report_id}).first():
+        return jsonify({"message": "Report not found"}), 404
     db.session.execute(
         text("DELETE FROM user_reports WHERE report_id = :report_id"),
         {"report_id": report_id}
@@ -318,7 +390,8 @@ def delete_report(report_id):
 
 
 @admin_bp.route("/monitoring-stats", methods=["GET"])
-def get_monitoring_stats():
+@require_admin
+def get_monitoring_stats(authenticated_admin_id):
     active_today = db.session.execute(text("""
         SELECT COUNT(*) FROM login_logs
         WHERE DATE(login_time) = CURDATE() AND status = 'Success'
@@ -356,14 +429,11 @@ def get_monitoring_stats():
 # ─────────────────────────────────────────────
 
 @admin_bp.route("/profile", methods=["GET"])
-def get_admin_profile():
-    email = request.args.get("email", "").strip().lower()
-    if not email:
-        return jsonify({"error": "Email is required"}), 400
-
+@require_admin
+def get_admin_profile(authenticated_admin_id):
     row = db.session.execute(text("""
-        SELECT admin_id, full_name, email FROM admins WHERE LOWER(email) = :email
-    """), {"email": email}).fetchone()
+        SELECT admin_id, full_name, email FROM admins WHERE admin_id = :admin_id
+    """), {"admin_id": authenticated_admin_id}).fetchone()
 
     if not row:
         return jsonify({"error": "Admin not found"}), 404
@@ -376,41 +446,98 @@ def get_admin_profile():
 
 
 @admin_bp.route("/profile", methods=["PUT"])
-def update_admin_profile():
+@require_super_admin
+def update_admin_profile(authenticated_admin_id, authenticated_admin):
     data = request.get_json() or {}
-    email     = data.get("email", "").strip().lower()
     full_name = data.get("full_name", "").strip()
 
-    if not email or not full_name:
-        return jsonify({"error": "Email and full name are required"}), 400
+    if not full_name:
+        return jsonify({"error": "Full name is required"}), 400
 
     db.session.execute(text("""
-        UPDATE admins SET full_name = :name WHERE LOWER(email) = :email
-    """), {"name": full_name, "email": email})
+        UPDATE admins SET full_name = :name WHERE admin_id = :admin_id
+    """), {"name": full_name, "admin_id": authenticated_admin_id})
     db.session.commit()
 
     return jsonify({"message": "Profile updated successfully"}), 200
 
 
 @admin_bp.route("/change-password", methods=["PUT"])
-def change_admin_password():
+@require_super_admin
+def change_admin_password(authenticated_admin_id, authenticated_admin):
     data             = request.get_json() or {}
-    email            = data.get("email", "").strip().lower()
     current_password = data.get("current_password", "")
     new_password     = data.get("new_password", "")
 
-    if not all([email, current_password, new_password]):
+    if not all([current_password, new_password]):
         return jsonify({"error": "All fields are required"}), 400
 
     from ..models import Admin
-    admin = Admin.query.filter_by(email=email).first()
+    admin = Admin.query.get(authenticated_admin_id)
     if not admin:
         return jsonify({"error": "Admin not found"}), 404
 
     if not check_password_hash(admin.password, current_password):
         return jsonify({"error": "Current password is incorrect"}), 401
+    if len(new_password) < 8:
+        return jsonify({"error": "New password must be at least 8 characters"}), 400
 
     admin.password = generate_password_hash(new_password)
     db.session.commit()
 
     return jsonify({"message": "Password changed successfully"}), 200
+
+
+@admin_bp.route("/admins", methods=["GET"])
+@require_super_admin
+def list_admins(authenticated_admin_id, authenticated_admin):
+    admins = Admin.query.order_by(Admin.admin_id.asc()).all()
+    return jsonify({"success": True, "admins": [admin.to_dict() for admin in admins]}), 200
+
+
+@admin_bp.route("/admins", methods=["POST"])
+@require_super_admin
+def create_admin(authenticated_admin_id, authenticated_admin):
+    data = request.get_json() or {}
+    full_name = str(data.get("full_name", "")).strip()
+    email = str(data.get("email", "")).strip().lower()
+    password = data.get("password", "")
+    if not full_name or not email or not password:
+        return jsonify({"success": False, "message": "Full name, email, and password are required"}), 400
+    if "@" not in email or len(password) < 8:
+        return jsonify({"success": False, "message": "Enter a valid email and a password of at least 8 characters"}), 400
+    if Admin.query.filter_by(email=email).first():
+        return jsonify({"success": False, "message": "An Admin with this email already exists"}), 409
+    admin = Admin(full_name=full_name, email=email, password=generate_password_hash(password), admin_level=2)
+    db.session.add(admin)
+    db.session.commit()
+    return jsonify({"success": True, "admin": admin.to_dict()}), 201
+
+
+@admin_bp.route("/admins/<int:admin_id>/level", methods=["PUT"])
+@require_super_admin
+def update_admin_level(admin_id, authenticated_admin_id, authenticated_admin):
+    if admin_id == authenticated_admin_id:
+        return jsonify({"success": False, "message": "You cannot change your own Admin level"}), 400
+    admin = Admin.query.get(admin_id)
+    if not admin:
+        return jsonify({"success": False, "message": "Admin not found"}), 404
+    level = (request.get_json() or {}).get("admin_level")
+    if level not in (1, 2):
+        return jsonify({"success": False, "message": "Admin level must be 1 or 2"}), 400
+    admin.admin_level = level
+    db.session.commit()
+    return jsonify({"success": True, "admin": admin.to_dict()}), 200
+
+
+@admin_bp.route("/admins/<int:admin_id>", methods=["DELETE"])
+@require_super_admin
+def delete_admin(admin_id, authenticated_admin_id, authenticated_admin):
+    if admin_id == authenticated_admin_id:
+        return jsonify({"success": False, "message": "You cannot delete your own Admin account"}), 400
+    admin = Admin.query.get(admin_id)
+    if not admin:
+        return jsonify({"success": False, "message": "Admin not found"}), 404
+    db.session.delete(admin)
+    db.session.commit()
+    return jsonify({"success": True, "message": "Admin deleted successfully"}), 200

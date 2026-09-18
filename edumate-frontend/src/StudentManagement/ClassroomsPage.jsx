@@ -58,7 +58,8 @@ export default function ClassroomsPage({
     return <div className="text-center py-12 text-slate-400">No courses available.</div>
   }
 
-  const currentFeedback = confusionFeedbacks?.[String(selectedCourse.id)] || ''
+  const courseId = selectedCourse.course_id || selectedCourse.id
+  const currentFeedback = confusionFeedbacks?.[String(courseId)] || ''
   const courseQuiz = getQuizForCourse?.(selectedCourse.id || selectedCourse.course_id)
   const quizId = courseQuiz?.quiz_id || courseQuiz?.id
   const quizResult = quizHistory?.find((entry) => String(entry.quiz_id) === String(quizId) || String(entry.quizId) === String(quizId))
@@ -163,7 +164,7 @@ export default function ClassroomsPage({
             <button
               key={level}
               type="button"
-              onClick={() => handleConfusionLevelSubmit?.(String(selectedCourse.id), level)}
+              onClick={() => handleConfusionLevelSubmit?.(String(courseId), level)}
               className={`px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${
                 currentFeedback === level
                   ? level === 'Understood'

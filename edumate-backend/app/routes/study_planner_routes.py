@@ -3,12 +3,16 @@ from .. import db
 from ..models.study_planner_model import StudyPlanner
 from ..models.student_model import Student
 from datetime import datetime
+from ..utils.student_auth import require_student
 
 planner_bp = Blueprint("planner", __name__)
 
 
 @planner_bp.route("/list/<int:student_id>", methods=["GET"])
-def get_tasks(student_id):
+@require_student
+def get_tasks(student_id, authenticated_student_id):
+    if student_id != authenticated_student_id:
+        return jsonify({"success": False, "message": "You can only view your own study plan"}), 403
     if not Student.query.get(student_id):
         return jsonify({"success": False, "message": "Student not found"}), 404
     try:
@@ -19,10 +23,9 @@ def get_tasks(student_id):
 
 
 @planner_bp.route("/add", methods=["POST"])
-def add_task():
+@require_student
+def add_task(authenticated_student_id):
     data = request.get_json() or {}
-    if not data.get("student_id"):
-        return jsonify({"success": False, "message": "student_id is required"}), 400
     if not data.get("task_name"):
         return jsonify({"success": False, "message": "task_name is required"}), 400
     if not data.get("scheduled_date"):
@@ -30,7 +33,7 @@ def add_task():
 
     try:
         task = StudyPlanner(
-            student_id=data["student_id"],
+            student_id=authenticated_student_id,
             task_name=data["task_name"],
             task_type=data.get("task_type", "study"),
             description=data.get("description", ""),
@@ -46,10 +49,13 @@ def add_task():
 
 
 @planner_bp.route("/update/<int:task_id>", methods=["PUT"])
-def update_task(task_id):
+@require_student
+def update_task(task_id, authenticated_student_id):
     task = StudyPlanner.query.get(task_id)
     if not task:
         return jsonify({"success": False, "message": "Task not found"}), 404
+    if task.student_id != authenticated_student_id:
+        return jsonify({"success": False, "message": "You can only update your own study plan"}), 403
 
     data = request.get_json() or {}
     try:
@@ -72,10 +78,13 @@ def update_task(task_id):
 
 
 @planner_bp.route("/delete/<int:task_id>", methods=["DELETE"])
-def delete_task(task_id):
+@require_student
+def delete_task(task_id, authenticated_student_id):
     task = StudyPlanner.query.get(task_id)
     if not task:
         return jsonify({"success": False, "message": "Task not found"}), 404
+    if task.student_id != authenticated_student_id:
+        return jsonify({"success": False, "message": "You can only delete your own study plan"}), 403
     try:
         db.session.delete(task)
         db.session.commit()
@@ -86,10 +95,13 @@ def delete_task(task_id):
 
 
 @planner_bp.route("/toggle/<int:task_id>", methods=["POST"])
-def toggle_task(task_id):
+@require_student
+def toggle_task(task_id, authenticated_student_id):
     task = StudyPlanner.query.get(task_id)
     if not task:
         return jsonify({"success": False, "message": "Task not found"}), 404
+    if task.student_id != authenticated_student_id:
+        return jsonify({"success": False, "message": "You can only update your own study plan"}), 403
     try:
         task.is_completed = not task.is_completed
         task.completed_at = datetime.utcnow() if task.is_completed else None

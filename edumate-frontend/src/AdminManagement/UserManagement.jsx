@@ -1,32 +1,39 @@
 import '../index.css'
 import { useEffect, useMemo, useState } from 'react'
 import { Search, Eye, Trash2 } from 'lucide-react'
+import { adminFetch, API_BASE_URL } from './adminApi'
 
-const API_BASE_URL = 'http://localhost:5000'
 const roleOptions = ['All Roles', 'Student', 'Tutor']
 
-export default function UserManagement() {
+export default function UserManagement({ isSuperAdmin = false }) {
   const [search, setSearch] = useState('')
   const [filterRole, setFilterRole] = useState('All Roles')
   const [users, setUsers] = useState([])
   const [selectedUser, setSelectedUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState('')
 
   const fetchUsers = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/api/admin/users`)
+      setFetchError('')
+      const response = await adminFetch(`${API_BASE_URL}/api/admin/users`)
       const data = await response.json()
 
+      if (response.status === 401) {
+        setFetchError('⚠️ Your admin session has expired. Please log out and log in again.')
+        return
+      }
+
       if (!response.ok) {
-        alert(data.error || 'Failed to load users')
+        setFetchError(data.error || data.message || `Failed to load users (${response.status})`)
         return
       }
 
       setUsers(data)
     } catch (error) {
       console.error('Error loading users:', error)
-      alert('Server error. Please check backend.')
+      setFetchError('Cannot reach the backend server. Make sure it is running on http://localhost:5000')
     } finally {
       setLoading(false)
     }
@@ -61,7 +68,7 @@ export default function UserManagement() {
           ? `${API_BASE_URL}/api/admin/users/student/${user.id}`
           : `${API_BASE_URL}/api/admin/users/tutor/${user.id}`
 
-      const response = await fetch(endpoint, { method: 'DELETE' })
+      const response = await adminFetch(endpoint, { method: 'DELETE' })
       const data = await response.json()
 
       if (!response.ok) {
@@ -88,8 +95,21 @@ export default function UserManagement() {
           <h1 className="page-title">Users</h1>
           <p className="profile-page-note">
             Manage students and tutors registered in EduMate.
+            {!loading && !fetchError && users.length > 0 && (
+              <span style={{ marginLeft: 8, color: '#7dd3fc', fontWeight: 600 }}>
+                ({users.length} total)
+              </span>
+            )}
           </p>
         </div>
+        <button
+          type="button"
+          className="action-button view-button"
+          onClick={fetchUsers}
+          style={{ alignSelf: 'center' }}
+        >
+          ↺ Refresh
+        </button>
       </div>
 
       {selectedUser ? (
@@ -153,14 +173,15 @@ export default function UserManagement() {
                 <div><span>Email:</span> {selectedUser.email}</div>
               </div>
 
-              <button
+              {isSuperAdmin && <button
                 type="button"
                 className="action-button delete-button"
-                onClick={() => deleteUser(selectedUser)}
+                onClick={() => isSuperAdmin && deleteUser(selectedUser)}
+                disabled={!isSuperAdmin}
                 style={{ marginTop: '1rem' }}
               >
                 <Trash2 size={14} /> Delete User
-              </button>
+              </button>}
             </div>
           </div>
         </div>
@@ -208,7 +229,22 @@ export default function UserManagement() {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan="5" className="empty-state">Loading users...</td>
+                      <td colSpan="5" className="empty-state">Loading users…</td>
+                    </tr>
+                  ) : fetchError ? (
+                    <tr>
+                      <td colSpan="5" className="empty-state" style={{ color: '#fb7185', lineHeight: 1.7 }}>
+                        {fetchError}
+                        <br />
+                        <button
+                          type="button"
+                          className="action-button view-button"
+                          style={{ marginTop: 10 }}
+                          onClick={fetchUsers}
+                        >
+                          ↺ Try Again
+                        </button>
+                      </td>
                     </tr>
                   ) : filteredUsers.length === 0 ? (
                     <tr>
@@ -254,13 +290,14 @@ export default function UserManagement() {
                             <Eye size={14} /> View
                           </button>
 
-                          <button
+                          {isSuperAdmin && <button
                             className="action-button delete-button"
                             type="button"
-                            onClick={() => deleteUser(user)}
+                            onClick={() => isSuperAdmin && deleteUser(user)}
+                            disabled={!isSuperAdmin}
                           >
                             <Trash2 size={14} /> Delete
-                          </button>
+                          </button>}
                         </td>
                       </tr>
                     ))

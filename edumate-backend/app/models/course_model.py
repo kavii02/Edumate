@@ -81,8 +81,6 @@ class Course(db.Model):
     status = db.Column(db.String(20), nullable=True, default='Pending')
     submitted_at = db.Column(db.DateTime, nullable=True)
     image_url = db.Column(db.String(500), nullable=True)
-    category = db.Column(db.String(50), nullable=True, default='General')
-    level = db.Column(db.String(50), nullable=True, default='Beginner')
 
     tutor = db.relationship('Tutor', back_populates='courses')
     materials = db.relationship('CourseMaterial', back_populates='course', cascade='all, delete-orphan')
@@ -111,8 +109,6 @@ class Course(db.Model):
             "tutor_id": self.tutor_id,
             "status": self.status,
             "image_url": self.image_url,
-            "category": self.category,
-            "level": self.level,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "submitted_at": self.submitted_at.isoformat() if self.submitted_at else None,
         }
