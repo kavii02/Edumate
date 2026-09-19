@@ -1,5 +1,6 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { TrendingUp, Calendar, ClipboardList } from 'lucide-react'
+import { TrendingUp, Calendar, ClipboardList, Cpu, ShieldCheck, AlertCircle } from 'lucide-react'
 import SimpleBarChart from '../components/SimpleBarChart'
 import { STUDENT_ROUTES } from '../studentRoutes'
 
@@ -8,8 +9,23 @@ export default function PerformancePage({
   attendanceRecords,
   courses,
   attendancePercentage,
-  buildWeakAreasSummary
+  buildWeakAreasSummary,
+  student,
+  token
 }) {
+  const [riskData, setRiskData] = useState(null)
+  const studentId = student?.student_id || parseInt(localStorage.getItem('edumate_student_id') || '1', 10)
+
+  useEffect(() => {
+    if (!studentId) return
+    fetch(`http://localhost:5000/api/ai/predict/${studentId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && !data.error) setRiskData(data)
+      })
+      .catch(() => {})
+  }, [studentId])
+
   const enrolled = courses.filter((c) => c.enrolled)
   const quizChartData = quizHistory.map((q) => ({
     label: q.quizTitle.length > 28 ? `${q.quizTitle.slice(0, 28)}…` : q.quizTitle,
@@ -80,6 +96,32 @@ export default function PerformancePage({
           )}
         </div>
       </div>
+
+      {riskData && (
+        <div className="p-6 rounded-3xl bg-slate-950/80 border border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Cpu size={22} className="text-cyan-400" />
+            <div>
+              <h3 className="font-bold text-white text-base">Decision Tree Academic Standing</h3>
+              <p className="text-xs text-slate-400">Model-evaluated risk status based on coursework indicators</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={`px-4 py-2 rounded-2xl text-xs font-bold border ${
+              riskData.predicted_risk === 'Low'
+                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                : riskData.predicted_risk === 'High'
+                ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+            }`}>
+              {riskData.predicted_risk} Risk ({Math.round((riskData.confidence || 0) * 100)}% confidence)
+            </span>
+            <Link to={STUDENT_ROUTES.aiFeedback} className="text-xs text-cyan-400 font-semibold hover:underline">
+              Details →
+            </Link>
+          </div>
+        </div>
+      )}
 
       <div className="p-6 rounded-3xl bg-amber-500/10 border border-amber-500/20">
         <h3 className="font-bold text-amber-200 mb-2">Weak Topics</h3>

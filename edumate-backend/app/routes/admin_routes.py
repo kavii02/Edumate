@@ -523,8 +523,8 @@ def update_admin_level(admin_id, authenticated_admin_id, authenticated_admin):
     if not admin:
         return jsonify({"success": False, "message": "Admin not found"}), 404
     level = (request.get_json() or {}).get("admin_level")
-    if level not in (1, 2):
-        return jsonify({"success": False, "message": "Admin level must be 1 or 2"}), 400
+    if level != 2:
+        return jsonify({"success": False, "message": "Only Regular Admin level can be assigned"}), 400
     admin.admin_level = level
     db.session.commit()
     return jsonify({"success": True, "admin": admin.to_dict()}), 200

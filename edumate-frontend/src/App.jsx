@@ -252,7 +252,7 @@ export default function App() {
         localStorage.setItem('edumate_tutor_name', data.tutor.name)
         localStorage.setItem('edumate_role', 'Tutor')
         localStorage.setItem('edumate_loggedIn', 'true')
-        saveTutorSession({ tutor_id: data.tutor.id, name: data.tutor.name, email: username })
+        saveTutorSession({ tutor_id: data.tutor.id, name: data.tutor.name, email: username, token: data.token })
         setLoggedIn(true)
         setError('')
         return

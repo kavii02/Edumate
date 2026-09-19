@@ -9,6 +9,8 @@ import {
   updateAnnouncement,
   deleteAnnouncement,
   getTutorCourses,
+  getTutorStudents,
+  sendTutorNotification,
 } from "../services/tutorApiService";
 import { useTutorAuth } from "../context/TutorAuthContext";
 
@@ -16,12 +18,14 @@ const Announcements = () => {
   const { tutorId } = useTutorAuth();
   const [announcements, setAnnouncements] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [studentSearch, setStudentSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
-  const [form, setForm] = useState({ title: "", content: "", course_id: "" });
+  const [form, setForm] = useState({ title: "", content: "", course_id: "", recipient_mode: "course", student_id: "", category: "Announcement" });
 
   const showMsg = (text, type = "success") => {
     setMessage({ text, type });
@@ -30,12 +34,14 @@ const Announcements = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const [aRes, cRes] = await Promise.all([
+    const [aRes, cRes, sRes] = await Promise.all([
       getAnnouncements(tutorId),
       getTutorCourses(tutorId),
+      getTutorStudents(tutorId),
     ]);
     if (aRes.success) setAnnouncements(aRes.announcements || []);
     if (cRes.success) setCourses(cRes.courses || []);
+    if (sRes.success) setStudents(sRes.students || []);
     setLoading(false);
   };
 
@@ -43,13 +49,15 @@ const Announcements = () => {
 
   const openCreate = () => {
     setEditTarget(null);
-    setForm({ title: "", content: "", course_id: "" });
+    setForm({ title: "", content: "", course_id: "", recipient_mode: "course", student_id: "", category: "Announcement" });
+    setStudentSearch("");
     setShowForm(true);
   };
 
   const openEdit = (ann) => {
     setEditTarget(ann.announcement_id);
-    setForm({ title: ann.title, content: ann.content, course_id: ann.course_id || "" });
+    setForm({ title: ann.title, content: ann.content, course_id: ann.course_id || "", recipient_mode: "course", student_id: "", category: "Announcement" });
+    setStudentSearch("");
     setShowForm(true);
   };
 
@@ -59,9 +67,25 @@ const Announcements = () => {
     e.preventDefault();
     if (!form.title.trim()) { showMsg("Title is required.", "error"); return; }
     if (!form.content.trim()) { showMsg("Content is required.", "error"); return; }
+    if (form.recipient_mode === "course" && !form.course_id) { showMsg("Select a course.", "error"); return; }
+    if (form.recipient_mode === "student" && (!form.course_id || !form.student_id)) { showMsg("Select a course and student.", "error"); return; }
     setSubmitting(true);
     const payload = { title: form.title.trim(), content: form.content.trim(), course_id: form.course_id ? parseInt(form.course_id) : null };
-    const res = editTarget ? await updateAnnouncement(editTarget, payload) : await createAnnouncement(tutorId, payload);
+    let res;
+    if (editTarget) {
+      res = await updateAnnouncement(editTarget, payload);
+    } else if (form.recipient_mode === "course" && form.course_id) {
+      res = await createAnnouncement(tutorId, payload);
+    } else {
+      res = await sendTutorNotification({
+        title: payload.title,
+        message: payload.content,
+        category: form.category,
+        recipient_mode: form.recipient_mode,
+        course_id: form.course_id ? parseInt(form.course_id) : null,
+        student_id: form.student_id ? parseInt(form.student_id) : null,
+      });
+    }
     if (res.success) {
       showMsg(editTarget ? "Announcement updated." : "Announcement published!");
       closeForm();
@@ -84,6 +108,9 @@ const Announcements = () => {
   };
 
   const formatDate = (iso) => iso ? new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "";
+  const connectedStudents = students
+    .filter((student) => !form.course_id || (student.courses || []).some((course) => String(course.course_id) === String(form.course_id)))
+    .filter((student) => `${student.name} ${student.student_id}`.toLowerCase().includes(studentSearch.toLowerCase()));
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.14),transparent_35%),linear-gradient(135deg,#03111f,#020617)] text-white px-6 py-7 space-y-6">
@@ -133,6 +160,35 @@ const Announcements = () => {
                 {courses.map((c) => <option key={c.course_id} value={c.course_id}>{c.course_title || c.title}</option>)}
               </select>
             </div>
+            {!editTarget && <>
+              <div>
+                <label className="block text-sm text-slate-400 mb-1.5">Recipients</label>
+                <select value={form.recipient_mode} onChange={(e) => setForm((p) => ({ ...p, recipient_mode: e.target.value }))}
+                  className="w-full rounded-xl bg-slate-900/80 border border-slate-600 px-4 py-2.5 text-sm text-white outline-none focus:border-purple-400">
+                  <option value="course">All students in selected course</option>
+                  <option value="student">One student in selected course</option>
+                  <option value="all_courses">Students in all my courses</option>
+                </select>
+              </div>
+              {form.recipient_mode === "student" && <div className="space-y-2">
+                <label className="block text-sm text-slate-400 mb-1.5">Student</label>
+                <input type="search" value={studentSearch} onChange={(e) => setStudentSearch(e.target.value)}
+                  placeholder="Search by student name or ID" className="w-full rounded-xl bg-slate-900/80 border border-slate-600 px-4 py-2.5 text-sm outline-none focus:border-purple-400 placeholder-slate-500" />
+                <select required value={form.student_id} onChange={(e) => setForm((p) => ({ ...p, student_id: e.target.value }))}
+                  className="w-full rounded-xl bg-slate-900/80 border border-slate-600 px-4 py-2.5 text-sm text-white outline-none focus:border-purple-400">
+                  <option value="">Select a connected student</option>
+                  {connectedStudents.map((student) => <option key={student.student_id} value={student.student_id}>{student.name} (ID: {student.student_id})</option>)}
+                </select>
+                {form.course_id && connectedStudents.length === 0 && <p className="text-xs text-amber-300">No connected students match this search.</p>}
+              </div>}
+              <div>
+                <label className="block text-sm text-slate-400 mb-1.5">Category</label>
+                <select value={form.category} onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
+                  className="w-full rounded-xl bg-slate-900/80 border border-slate-600 px-4 py-2.5 text-sm text-white outline-none focus:border-purple-400">
+                  {['Announcement', 'Quiz', 'Lesson', 'Material', 'Attendance', 'Reminder', 'General'].map((category) => <option key={category}>{category}</option>)}
+                </select>
+              </div>
+            </>}
             <div>
               <label className="block text-sm text-slate-400 mb-1.5">Content <span className="text-purple-400">*</span></label>
               <textarea value={form.content} onChange={(e) => setForm((p) => ({ ...p, content: e.target.value }))}

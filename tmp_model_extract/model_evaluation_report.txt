@@ -1,0 +1,23 @@
+EDUMATE - DECISION TREE MODEL EVALUATION
+========================================
+
+Total Dataset : 70
+Training Data : 21 (30%)
+Testing Data  : 49 (70%)
+
+Accuracy  : 85.71%
+Precision : 86.19%
+Recall    : 85.71%
+F1 Score  : 85.90%
+
+Classification Report
+---------------------
+              precision    recall  f1-score   support
+
+        High       1.00      0.94      0.97        16
+         Low       0.82      0.82      0.82        17
+      Medium       0.76      0.81      0.79        16
+
+    accuracy                           0.86        49
+   macro avg       0.86      0.86      0.86        49
+weighted avg       0.86      0.86      0.86        49

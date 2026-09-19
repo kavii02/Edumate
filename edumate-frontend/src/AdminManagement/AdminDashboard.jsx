@@ -8,7 +8,6 @@ import {
   Settings,
   Bell,
   Mail,
-  ChevronDown,
   UserCheck,
   Activity,
   ChevronRight
@@ -141,8 +140,7 @@ export default function AdminDashboard({ onLogout }) {
 
             <button className="profile-pill" type="button">
               <UserCheck size={16} />
-              {isSuperAdmin ? 'Super Admin' : 'Limited Admin'}
-              <ChevronDown size={16} />
+              {isSuperAdmin ? 'Super Admin' : 'Regular Admin'}
             </button>
 
             <button className="logout-pill" type="button" onClick={onLogout}>

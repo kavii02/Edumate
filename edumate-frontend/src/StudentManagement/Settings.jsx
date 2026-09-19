@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Bell, Lock, Eye, Globe, Zap, HelpCircle, LogOut, ChevronRight } from 'lucide-react'
+import { Bell, Lock, Eye, Globe, Zap, HelpCircle, LogOut, ChevronRight, X, KeyRound, Loader2 } from 'lucide-react'
 import './Student.css'
 
 export default function Settings() {
@@ -18,6 +18,59 @@ export default function Settings() {
   })
 
   const [savedMessage, setSavedMessage] = useState('')
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' })
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordSuccess, setPasswordSuccess] = useState('')
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault()
+    setPasswordError('')
+    setPasswordSuccess('')
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError('New passwords do not match.')
+      return
+    }
+    if (passwordForm.newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters.')
+      return
+    }
+
+    const studentId = parseInt(localStorage.getItem('edumate_student_id') || '1', 10)
+    const token = localStorage.getItem('edumate_student_token')
+
+    setIsChangingPassword(true)
+    try {
+      const res = await fetch(`http://localhost:5000/api/student/change-password/${studentId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          old_password: passwordForm.oldPassword,
+          new_password: passwordForm.newPassword
+        })
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setPasswordSuccess('Password changed successfully!')
+        setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' })
+        setTimeout(() => {
+          setShowPasswordModal(false)
+          setPasswordSuccess('')
+        }, 1500)
+      } else {
+        setPasswordError(data.message || 'Failed to change password.')
+      }
+    } catch {
+      setPasswordError('Unable to connect to server.')
+    } finally {
+      setIsChangingPassword(false)
+    }
+  }
 
   const handleToggle = (key) => {
     setSettings({
@@ -34,15 +87,15 @@ export default function Settings() {
   }
 
   const handleSave = () => {
-  setSavedMessage('Settings saved successfully!')
+    setSavedMessage('Settings saved successfully!')
 
-  window.scrollTo({
-    top: 0,
-    behavior: 'smooth'
-  })
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    })
 
-  setTimeout(() => setSavedMessage(''), 3000)
-}
+    setTimeout(() => setSavedMessage(''), 3000)
+  }
 
   const SettingRow = ({ icon: Icon, label, description, children }) => (
     <div className="flex items-center justify-between py-4 px-4 rounded-2xl hover:bg-slate-800/50 transition-colors">
@@ -243,7 +296,7 @@ export default function Settings() {
               </button>
             </SettingRow>
 
-            <button className="w-full text-left">
+            <button type="button" onClick={() => setShowPasswordModal(true)} className="w-full text-left">
               <SettingRow
                 icon={Lock}
                 label="Change Password"
@@ -412,6 +465,97 @@ export default function Settings() {
           </button>
         </div>
       </div>
+
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-slate-800 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2 text-white font-bold">
+                <KeyRound size={20} className="text-cyan-400" />
+                <span>Change Password</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPasswordModal(false)
+                  setPasswordError('')
+                  setPasswordSuccess('')
+                }}
+                className="text-slate-400 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {passwordError && (
+              <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs">
+                {passwordError}
+              </div>
+            )}
+            {passwordSuccess && (
+              <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs">
+                {passwordSuccess}
+              </div>
+            )}
+
+            <form onSubmit={handlePasswordSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Current Password</label>
+                <input
+                  type="password"
+                  value={passwordForm.oldPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, oldPassword: e.target.value })}
+                  className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2.5 text-sm text-white focus:border-cyan-500 focus:outline-none"
+                  placeholder="Enter current password"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">New Password</label>
+                <input
+                  type="password"
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                  className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2.5 text-sm text-white focus:border-cyan-500 focus:outline-none"
+                  placeholder="At least 6 characters"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Confirm New Password</label>
+                <input
+                  type="password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                  className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2.5 text-sm text-white focus:border-cyan-500 focus:outline-none"
+                  placeholder="Re-enter new password"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordModal(false)}
+                  className="flex-1 rounded-xl bg-slate-800 px-4 py-2.5 text-sm font-semibold text-slate-300 hover:bg-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isChangingPassword}
+                  className="flex-1 rounded-xl bg-cyan-500 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-cyan-400 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isChangingPassword && <Loader2 size={16} className="animate-spin" />}
+                  <span>{isChangingPassword ? 'Updating...' : 'Update Password'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

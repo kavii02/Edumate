@@ -21,7 +21,10 @@ def create_app():
     # Configuration
     # ==========================
 
-    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "change-me")
+    secret_key = os.getenv("SECRET_KEY")
+    if not secret_key or len(secret_key) < 32:
+        raise RuntimeError("SECRET_KEY must be configured with at least 32 characters")
+    app.config["SECRET_KEY"] = secret_key
 
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
         "DATABASE_URL",
@@ -101,6 +104,7 @@ def create_app():
     from .routes.course_material_routes import material_bp
     from .routes.ai_routes import ai_bp
     from .routes.student_activity_routes import student_activity_bp
+    from .routes.notification_routes import notification_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(skill_bp, url_prefix="/api/skills")
@@ -119,6 +123,7 @@ def create_app():
     app.register_blueprint(material_bp, url_prefix="/api/materials")
     app.register_blueprint(ai_bp, url_prefix="/api/ai")
     app.register_blueprint(student_activity_bp, url_prefix="/api/student-activity")
+    app.register_blueprint(notification_bp, url_prefix="/api/notifications")
 
     # ==========================
     # Create Tables

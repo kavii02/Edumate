@@ -26,6 +26,8 @@ export const saveTutorSession = (tutor) => {
   localStorage.setItem(TUTOR_SESSION_KEY, JSON.stringify(tutor));
 };
 
+export const getTutorToken = () => getTutorSession()?.token || null;
+
 export const getTutorSession = () => {
   try {
     const raw = localStorage.getItem(TUTOR_SESSION_KEY);

@@ -126,7 +126,8 @@ export default function QuizAttemptPage({
   const handleViolation = (msg) => {
     setViolationMsg(msg)
     triggerToast?.(msg)
-    setTimeout(() => navigate(STUDENT_ROUTES.quizzes), 2000)
+    // Automatically submit current progress to preserve academic integrity
+    submitAnswers()
   }
 
   const handleSelectQuizOption = (optionIdx) => {

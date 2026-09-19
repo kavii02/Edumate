@@ -29,7 +29,7 @@ export default function AdminManagement() {
       return
     }
     setForm({ full_name: '', email: '', password: '' })
-    setMessage('Limited Admin created successfully.')
+    setMessage('Regular Admin created successfully.')
     loadAdmins()
   }
 
@@ -54,17 +54,17 @@ export default function AdminManagement() {
       </div>
       {message && <p className="profile-page-note">{message}</p>}
       <div className="settings-card neon-card-purple" style={{ marginBottom: '1.5rem' }}>
-        <h3>Add Limited Admin</h3>
+        <h3>Add Regular Admin</h3>
         <form onSubmit={submit} className="settings-form">
           <input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Full name" required />
           <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Email" required />
           <input type="password" minLength="8" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Password (minimum 8 characters)" required />
-          <button type="submit" className="course-action-button">Create Limited Admin</button>
+          <button type="submit" className="course-action-button">Create Regular Admin</button>
         </form>
       </div>
       <div className="user-table-card neon-blink"><div className="table-wrapper"><table className="user-table">
         <thead><tr><th>NAME</th><th>EMAIL</th><th>LEVEL</th><th>ACTIONS</th></tr></thead>
-        <tbody>{admins.map((admin) => <tr key={admin.admin_id}><td>{admin.full_name}</td><td>{admin.email}</td><td><select value={admin.admin_level} onChange={(event) => changeLevel(admin, event.target.value)} disabled={admin.admin_level === 1}><option value="1">Super Admin</option><option value="2">Limited Admin</option></select></td><td>{admin.admin_level !== 1 && <button type="button" className="action-button delete-button" onClick={() => remove(admin)}><Trash2 size={14} /> Delete</button>}</td></tr>)}</tbody>
+        <tbody>{admins.map((admin) => <tr key={admin.admin_id}><td>{admin.full_name}</td><td>{admin.email}</td><td>{admin.admin_level === 1 ? <span>Super Admin</span> : <select value="2" onChange={(event) => changeLevel(admin, event.target.value)}><option value="2">Regular Admin</option></select>}</td><td>{admin.admin_level !== 1 && <button type="button" className="action-button delete-button" onClick={() => remove(admin)}><Trash2 size={14} /> Delete</button>}</td></tr>)}</tbody>
       </table></div></div>
     </section>
   )

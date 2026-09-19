@@ -243,7 +243,10 @@ export const deleteQuestion = async (questionId) => {
 /** All students enrolled across this tutor's courses with real performance data */
 export const getTutorStudents = async (tutorId) => {
   try {
-    const res = await fetch(`${API_BASE}/students/${tutorId}`);
+    const session = JSON.parse(localStorage.getItem("tutorSession") || "{}");
+    const res = await fetch(`${API_BASE}/students/${tutorId}`, {
+      headers: { Authorization: `Bearer ${session.token || ""}` },
+    });
     return await res.json();
   } catch {
     return { success: false, message: "Failed to fetch students" };
@@ -452,12 +455,26 @@ export const createAnnouncement = async (tutorId, data) => {
   try {
     const res = await fetch(`${API_BASE}/announcements`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tutor_id: tutorId, ...data }),
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${JSON.parse(localStorage.getItem("tutorSession") || "{}").token || ""}` },
+      body: JSON.stringify(data),
     });
     return await res.json();
   } catch {
     return { success: false, message: "Failed to create announcement" };
+  }
+};
+
+export const sendTutorNotification = async (data) => {
+  try {
+    const session = JSON.parse(localStorage.getItem("tutorSession") || "{}");
+    const res = await fetch("http://localhost:5000/api/notifications/tutor/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token || ""}` },
+      body: JSON.stringify(data),
+    });
+    return await res.json();
+  } catch {
+    return { success: false, message: "Failed to send notification" };
   }
 };
 

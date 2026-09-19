@@ -7,6 +7,8 @@ from ..models.student_model import Student
 from ..models.enrollment_model import Enrollment
 from ..models.quiz_result_model import QuizResult
 from ..utils.password_utils import validate_password
+from ..utils.tutor_auth import require_tutor
+from ..services.notification_service import create_notification, create_student_notifications_for_course
 from .. import db
 from datetime import datetime
 
@@ -525,6 +527,19 @@ def create_quiz():
         db.session.add(question)
 
     db.session.commit()
+    if is_published:
+        create_student_notifications_for_course(
+            course_id,
+            title="New Quiz Available",
+            message=f"A new quiz, {title}, is available in {quiz.course.course_title}.",
+            notification_type="Quiz",
+            sender_id=tutor_id,
+            sender_role="tutor",
+            related_entity_id=quiz.quiz_id,
+            related_entity_type="quiz",
+            dedupe_key=f"quiz-published:{quiz.quiz_id}",
+        )
+        db.session.commit()
     return jsonify({"success": True, "message": "Quiz created successfully", "quiz": quiz.to_dict()}), 201
 
 
@@ -534,6 +549,18 @@ def publish_quiz(quiz_id):
     if not quiz:
         return jsonify({"success": False, "message": "Quiz not found"}), 404
     quiz.status = "Active"
+    db.session.commit()
+    create_student_notifications_for_course(
+        quiz.course_id,
+        title="New Quiz Available",
+        message=f"A new quiz, {quiz.quiz_title}, is available in {quiz.course.course_title}.",
+        notification_type="Quiz",
+        sender_id=quiz.course.tutor_id if quiz.course else None,
+        sender_role="tutor",
+        related_entity_id=quiz.quiz_id,
+        related_entity_type="quiz",
+        dedupe_key=f"quiz-published:{quiz.quiz_id}",
+    )
     db.session.commit()
     return jsonify({"success": True, "message": "Quiz published"}), 200
 
@@ -652,7 +679,8 @@ def get_quiz_results(quiz_id):
 # ─────────────────────────────────────────────────────────────────
 
 @tutor_bp.route("/students/<int:tutor_id>", methods=["GET"])
-def get_all_students_for_tutor(tutor_id):
+@require_tutor
+def get_all_students_for_tutor(tutor_id, authenticated_tutor_id):
     """
     All students in any of this tutor's courses (via attendance table, since
     enrollments table is empty but attendance has 700 real records linking
@@ -661,17 +689,20 @@ def get_all_students_for_tutor(tutor_id):
     """
     import logging
     logger = logging.getLogger(__name__)
+    if tutor_id != authenticated_tutor_id:
+        return jsonify({"success": False, "message": "Tutor access denied"}), 403
     try:
         # Discover students via the attendance table (enrollments is empty)
         # Each unique (student_id, course_id) pair in attendance maps a student to a course
         rows = db.session.execute(
             text("""
-                SELECT DISTINCT s.student_id, s.first_name, s.last_name, s.email,
-                       s.school_name, s.grade_level, a.course_id, c.course_title
+                  SELECT DISTINCT s.student_id, s.first_name, s.last_name, s.email,
+                      s.school_name, s.grade_level, c.course_id, c.course_title
                 FROM students s
-                INNER JOIN attendance a ON a.student_id = s.student_id
-                INNER JOIN courses c ON c.course_id = a.course_id
-                WHERE c.tutor_id = :tid
+                  INNER JOIN courses c ON c.tutor_id = :tid
+                  LEFT JOIN attendance a ON a.student_id = s.student_id AND a.course_id = c.course_id
+                  LEFT JOIN enrollments e ON e.student_id = s.student_id AND e.course_id = c.course_id
+                  WHERE a.student_id IS NOT NULL OR e.student_id IS NOT NULL
                 ORDER BY s.first_name, s.last_name
             """),
             {"tid": tutor_id}
@@ -1288,10 +1319,11 @@ def get_announcements(tutor_id):
 
 
 @tutor_bp.route("/announcements", methods=["POST"])
-def create_announcement():
+@require_tutor
+def create_announcement(authenticated_tutor_id):
     """Create a new announcement."""
     data = request.get_json() or {}
-    tutor_id = _as_int(data.get("tutor_id"))
+    tutor_id = authenticated_tutor_id
     title = (data.get("title") or "").strip()
     content = (data.get("content") or "").strip()
     course_id = _as_int(data.get("course_id"))
@@ -1304,7 +1336,7 @@ def create_announcement():
         return jsonify({"success": False, "message": "Content is required"}), 400
     if not Tutor.query.get(tutor_id):
         return jsonify({"success": False, "message": "Tutor not found"}), 404
-    if course_id and not Course.query.get(course_id):
+    if course_id and (not Course.query.get(course_id) or Course.query.get(course_id).tutor_id != tutor_id):
         return jsonify({"success": False, "message": "Course not found"}), 404
 
     try:
@@ -1317,22 +1349,27 @@ def create_announcement():
         )
         db.session.commit()
 
-        # Optionally notify enrolled students
+        announcement_id = db.session.execute(text("SELECT LAST_INSERT_ID()")).scalar()
         if course_id:
-            enrolled = db.session.execute(
-                text("SELECT student_id FROM enrollments WHERE course_id = :cid"),
-                {"cid": course_id}
-            ).fetchall()
-            for row in enrolled:
-                db.session.execute(
-                    text("""
-                        INSERT INTO notifications (student_id, message, status)
-                        VALUES (:sid, :msg, 'Unread')
-                    """),
-                    {"sid": row.student_id,
-                     "msg": f"New announcement from your tutor: {title}"}
-                )
-            db.session.commit()
+            target_courses = [course_id]
+        else:
+            target_courses = db.session.execute(
+                text("SELECT course_id FROM courses WHERE tutor_id = :tutor_id"),
+                {"tutor_id": tutor_id},
+            ).scalars().all()
+        for target_course_id in target_courses:
+            create_student_notifications_for_course(
+                target_course_id,
+                title=title,
+                message=content,
+                notification_type="Announcement",
+                sender_id=tutor_id,
+                sender_role="tutor",
+                related_entity_id=announcement_id,
+                related_entity_type="announcement",
+                dedupe_key=f"announcement:{announcement_id}",
+            )
+        db.session.commit()
 
         return jsonify({"success": True, "message": "Announcement created successfully"}), 201
     except Exception as e:

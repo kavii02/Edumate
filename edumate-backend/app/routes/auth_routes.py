@@ -1,7 +1,8 @@
 from datetime import datetime
 from random import randint
+import jwt
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, current_app, request, jsonify
 from sqlalchemy import text
 from werkzeug.security import check_password_hash
 
@@ -310,6 +311,7 @@ def tutor_login():
     return jsonify({
         "success": True,
         "message": "Login successful.",
+        "token": jwt.encode({"tutor_id": tutor.tutor_id, "role": "tutor"}, current_app.config["SECRET_KEY"], algorithm="HS256"),
         "tutor": {
             "id": tutor.tutor_id,
             "name": f"{tutor.first_name} {tutor.last_name}",

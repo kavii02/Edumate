@@ -5,6 +5,7 @@ from ..models.enrollment_model import Enrollment
 from ..models.student_model import Student
 from ..models.quiz_model import Quiz
 from ..models.course_material_model import CourseMaterial
+from ..services.notification_service import create_notification, create_student_notifications_for_course
 from datetime import datetime
 from ..utils.student_auth import require_student
 
@@ -152,6 +153,22 @@ def enroll_course(authenticated_student_id):
     try:
         enrollment = Enrollment(student_id=data['student_id'], course_id=data['course_id'])
         db.session.add(enrollment)
+        db.session.flush()
+        student = Student.query.get(authenticated_student_id)
+        course = Course.query.get(data['course_id'])
+        if course and course.tutor_id:
+            create_notification(
+                tutor_id=course.tutor_id,
+                recipient_role="tutor",
+                sender_id=authenticated_student_id,
+                sender_role="student",
+                title="New Student Enrollment",
+                message=f"{student.name if student else 'A student'} enrolled in {course.course_title}.",
+                notification_type="Enrollment",
+                related_entity_id=enrollment.enrollment_id,
+                related_entity_type="enrollment",
+                dedupe_key=f"enrollment:{enrollment.enrollment_id}",
+            )
         db.session.commit()
         return jsonify({"success": True, "message": "Enrolled successfully", "enrollment_id": enrollment.enrollment_id}), 201
     except Exception as e:
@@ -237,6 +254,19 @@ def add_course_material(course_id):
             description=description or None,
         )
         db.session.add(material)
+        db.session.commit()
+        course = Course.query.get(course_id)
+        create_student_notifications_for_course(
+            course_id,
+            title="New Learning Material",
+            message=f"New learning material, {title}, has been uploaded for {course.course_title}.",
+            notification_type="Material",
+            sender_id=course.tutor_id,
+            sender_role="tutor",
+            related_entity_id=material.material_id,
+            related_entity_type="material",
+            dedupe_key=f"material-published:{material.material_id}",
+        )
         db.session.commit()
         return jsonify({"success": True, "material": material.to_dict()}), 201
     except Exception as e:

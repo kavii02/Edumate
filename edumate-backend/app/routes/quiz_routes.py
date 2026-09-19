@@ -2,6 +2,7 @@ import os
 import tempfile
 
 from flask import Blueprint, request, jsonify, current_app
+from sqlalchemy import text
 from .. import db
 from ..models.quiz_model import Quiz, QuizQuestion
 from ..models.quiz_result_model import QuizResult
@@ -11,6 +12,7 @@ from ..models.course_model import Course
 from ..services.ai_quiz_service import generate_quiz_with_ai
 from ..services.pdf_service import extract_text_from_pdf
 from ..utils.student_auth import require_student
+from ..services.notification_service import create_notification
 
 quiz_bp = Blueprint("quiz", __name__)
 
@@ -164,6 +166,16 @@ def submit_quiz(authenticated_student_id):
     quiz = Quiz.query.get(data['quiz_id'])
     if not quiz:
         return jsonify({"success": False, "message": "Quiz not found"}), 404
+    connected = db.session.execute(text("""
+        SELECT 1 FROM enrollments
+        WHERE student_id = :student_id AND course_id = :course_id
+        UNION
+        SELECT 1 FROM attendance
+        WHERE student_id = :student_id AND course_id = :course_id
+        LIMIT 1
+    """), {"student_id": authenticated_student_id, "course_id": quiz.course_id}).first()
+    if not connected:
+        return jsonify({"success": False, "message": "Student is not connected to this course"}), 403
 
     try:
         score = 0
@@ -208,7 +220,6 @@ def submit_quiz(authenticated_student_id):
 
         # 5. Automatically update/insert the skill in the skills table
         try:
-            from sqlalchemy import text
             if quiz.course:
                 skill_name = quiz.course.title.split('(')[0].strip()
                 category = quiz.course.title.split('(')[0].strip()
@@ -257,6 +268,24 @@ def submit_quiz(authenticated_student_id):
         except Exception as skill_err:
             print(f"Error auto-updating student skill: {str(skill_err)}")
 
+        if quiz.course and quiz.course.tutor_id:
+            student = Student.query.get(authenticated_student_id)
+            db.session.flush()
+            create_notification(
+                tutor_id=quiz.course.tutor_id,
+                recipient_role="tutor",
+                sender_id=authenticated_student_id,
+                sender_role="student",
+                title="New Quiz Submission",
+                message=(
+                    f"{student.name if student else 'A student'} submitted {quiz.quiz_title} "
+                    f"in {quiz.course.course_title} with a score of {percentage:.2f}%."
+                ),
+                notification_type="Quiz",
+                related_entity_id=quiz_result.result_id,
+                related_entity_type="quiz_result",
+                dedupe_key=f"quiz-submission:{quiz_result.result_id}",
+            )
         db.session.commit()
 
         return jsonify({"success": True, "message": "Quiz submitted successfully", "result": quiz_result.to_dict()}), 200

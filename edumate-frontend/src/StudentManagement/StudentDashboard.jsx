@@ -1255,6 +1255,10 @@ export default function StudentDashboard({ onLogout, student, token }) {
   const notificationsPage = (
     <Notifications
       notifications={notifications}
+      markAllRead={async () => {
+        if (token) await fetch('http://localhost:5000/api/student-activity/notifications/read-all', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+        setNotifications((previous) => previous.map((n) => ({ ...n, unread: false })))
+      }}
       markRead={async (id) => {
         if (token && typeof id === 'number') {
           await fetch(`http://localhost:5000/api/student-activity/notifications/${id}/read`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
@@ -1331,9 +1335,7 @@ export default function StudentDashboard({ onLogout, student, token }) {
           <div className="header-actions">
             <button className="icon-pill relative" type="button" onClick={() => navigate(STUDENT_ROUTES.notifications)}>
               <Bell size={16} />
-              {notifications.some(n => n.unread) && (
-                <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
-              )}
+              {notifications.some(n => n.unread) && <span className="absolute -top-2 -right-2 min-w-5 h-5 px-1 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">{notifications.filter((n) => n.unread).length}</span>}
             </button>
             <button
               className="profile-pill"
@@ -1424,6 +1426,8 @@ export default function StudentDashboard({ onLogout, student, token }) {
                 courses={courses}
                 attendancePercentage={attendancePercentage}
                 buildWeakAreasSummary={buildWeakAreasSummary}
+                student={student}
+                token={token}
               />
             )} />
             <Route path={STUDENT_ROUTES.aiFeedback} element={(
@@ -1432,6 +1436,8 @@ export default function StudentDashboard({ onLogout, student, token }) {
                 buildWeakAreasSummary={buildWeakAreasSummary}
                 quizHistory={quizHistory}
                 handleAddRecommendationToPlanner={handleAddRecommendationToPlanner}
+                student={student}
+                token={token}
               />
             )} />
             <Route path={STUDENT_ROUTES.studyPlanner} element={(
